@@ -27,7 +27,7 @@ class MetadataCatalog(object):
         if not os.path.exists(metadataDirectory):
             os.makedirs(metadataDirectory)
         with open(metadataPath, 'wt') as f:
-            f.write(json.dumps(metadata))
+            f.write(json.dumps(metadata) + '\n')
 
     def read(self, hash_):
         metadataPath = self.hashTree.getPath(hash_)
