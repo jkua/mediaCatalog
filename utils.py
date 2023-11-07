@@ -5,8 +5,8 @@ import acoustid
 
 
 def getMetadata(filenames: list) -> list:
-    with exiftool.ExifTool() as et:
-        metadata = et.get_metadata_batch(filenames)
+    with exiftool.ExifToolHelper() as et:
+        metadata = et.get_metadata(filenames)
     return metadata
 
 
