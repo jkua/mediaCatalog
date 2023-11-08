@@ -1,26 +1,30 @@
+import os
 import sqlite3
+import json
 from packaging.version import Version
 
-from metadataCatalog import MetadataCatalog
+import utils
 
-class MetadataCatalogSqlite(MetadataCatalog):
+class CatalogDatabase(object):
     SCHEMA_VERSION = Version('0.1.0')
     MIN_SCHEMA_VERSION = Version('0.1.0')
 
     def __init__(self, dbPath):
         self.dbPath = dbPath
+        print(self.dbPath)
         self._open_db()
-
-        self.connection.close()
 
     def _open_db(self):
         self.connection = sqlite3.connect(self.dbPath)
-        self.cursor = self.connection.cursor()
+        self.connection.row_factory = sqlite3.Row
+        
+        if self.connection:
+            self.cursor = self.connection.cursor()
 
-        initialized = self._check_db_schema()
+            initialized = self._check_db_schema()
 
-        if not initialized:
-            self._init_db()
+            if not initialized:
+                self._init_db()
 
     def _check_db_schema(self):
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'")
@@ -76,22 +80,76 @@ class MetadataCatalogSqlite(MetadataCatalog):
         self.cursor.execute(
             '''CREATE TABLE photos 
                 (
-                    photo_id BLOB PRIMARY KEY,
-                    directory TEXT NULL,
+                    checksum BLOB PRIMARY KEY,
                     file_name TEXT NOT NULL,
+                    directory TEXT NULL,
                     file_size INTEGER NOT NULL,
-                    file_creation_datetime DATETIME NOT NULL,
+                    file_modify_datetime DATETIME NOT NULL,
+                    file_mime_type TEXT NOT NULL,
+                    camera_model TEXT NULL,
+                    camera_serial_number TEXT NULL,
                     capture_datetime DATETIME NULL,
-                    checksum BLOB NOT NULL,
-                    metadata BLOB NULL,
-                    thumbnail BLOB NULL
+                    metadata_path TEXT NOT NULL
                 )
             '''
             )
 
         self.connection.commit()
 
+    def write(self, metadata, metadataPath):
+        self.cursor.execute(
+            '''INSERT INTO photos
+                (
+                    checksum, 
+                    file_name,
+                    directory, 
+                    file_size, 
+                    file_modify_datetime,
+                    file_mime_type,
+                    camera_model,
+                    camera_serial_number,
+                    capture_datetime, 
+                    metadata_path
+                )
+                VALUES
+                (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+            ''',
+            (
+                metadata['File:SHA256Sum'],
+                metadata['File:FileName'],
+                metadata['File:Directory'],
+                metadata['File:FileSize'],
+                metadata['File:FileModifyDate'],
+                metadata['File:MIMEType'],
+                metadata.get('EXIF:Model'),
+                metadata.get('EXIF:SerialNumber'),
+                utils.getPreciseCaptureTimeFromExif(metadata),
+                metadataPath
+            )
+        )
+
+    def read(self, checksum):
+        self.cursor.execute(
+            'SELECT * FROM photos WHERE checksum = ?',
+            (checksum,)
+        )
+        records = self.cursor.fetchall()
+        if len(records) == 0:
+            raise KeyError(f'Checksum {checksum} not found in database!')
+        elif len(records) > 1:
+            print(f'WARNING: Multiple ({len(records)}) entries with checksum {checksum} in database! Returning first!')
+
+        return records[0]
+
+    def commit(self):
+        self.connection.commit()
+
+    def close(self):
+        self.connection.close()
+
 
 if __name__=='__main__':
-    catalog = MetadataCatalogSqlite('test.db')
+    catalog = CatalogDatabase('test.db')
 

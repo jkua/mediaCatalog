@@ -15,6 +15,5 @@ if __name__=='__main__':
 
     for path in args.path:
         cataloger.catalog(path)
-        
 
-
+    cataloger.close()   

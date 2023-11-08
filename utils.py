@@ -11,11 +11,34 @@ def getMetadata(filenames: list) -> list:
 
 
 def md5sum(filename: str, chunkSize=1024*1024) -> str:
-    hash_md5 = hashlib.md5()
+    hash_function = hashlib.md5()
     with open(filename, "rb") as f:
         for chunk in iter(lambda: f.read(chunkSize), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+            hash_function.update(chunk)
+    return hash_function.hexdigest()
+
+
+def sha256sum(filename: str, chunkSize=1024*1024) -> str:
+    hash_function = hashlib.sha256()
+    with open(filename, "rb") as f:
+        for chunk in iter(lambda: f.read(chunkSize), b""):
+            hash_function.update(chunk)
+    return hash_function.hexdigest()
+
+
+def getPreciseCaptureTimeFromExif(metadata):
+    if metadata.get('EXIF:DateTimeOriginal'):
+        captureTime = metadata.get('EXIF:DateTimeOriginal')
+    else:
+        return None
+
+    if metadata.get('EXIF:SubSecTimeOriginal'):
+        captureTime += f".{metadata.get('EXIF:SubSecTimeOriginal')}"
+
+    if metadata.get(metadata['EXIF:OffsetTimeOriginal']):
+        captureTime += metadata['EXIF:OffsetTimeOriginal']
+
+    return captureTime
 
 
 def getAcoustid(filename: str, quiet=False, ACOUSTID_API_KEY=None) -> list:

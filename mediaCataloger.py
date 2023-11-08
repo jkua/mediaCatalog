@@ -2,25 +2,32 @@ import os
 import glob
 import logging
 import socket
+import json
 
 import jsonlines
 
-from metadataCatalog import MetadataCatalog
-from utils import md5sum, getMetadata, getAcoustid
+from metadataCatalogHDT import MetadataCatalogHDT
+from catalogDatabase import CatalogDatabase
+from utils import md5sum, sha256sum, getMetadata, getAcoustid
 
 
 class MediaCataloger(object):
     METADATA_FOLDERNAME = 'metadata'
+    CATALOG_DB_FILENAME = 'catalog.db'
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
     MEDIA_EXTENSIONS = ['cr2', 'cr3', 'jpg', 'jpeg', 'heif', 'mov', 'mp4', 'mp3', 'm4a']
+    CHECKSUM_MODE = 'SHA256'
 
     def __init__(self, catalogPath):
         self.catalogPath = catalogPath
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
+        self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
         self.metadataCatalogPath = os.path.join(self.catalogPath, self.METADATA_FOLDERNAME)
-        self.md5ChunkSize = 1024*1024*16
+        self.hashChunkSize = 1024*1024*16
         self.hashDict = {}
+        self.catalogDb = None
         self.metadataCatalog = None
+        self.checksumKey = f'File:{self.CHECKSUM_MODE}Sum'
 
         self.open()
 
@@ -31,26 +38,24 @@ class MediaCataloger(object):
         else:
             self.loadCatalog()
 
+    def close(self):
+        self.catalogDb.close()
+
     def createCatalog(self):
         # Create the catalog folder
         os.mkdir(self.catalogPath)
 
         # Create the metadata folder - subfolders are two character segments of the md5sum
         os.mkdir(self.metadataCatalogPath)
-        self.metadataCatalog = MetadataCatalog(self.metadataCatalogPath)
-
-        # Create the hash table - single JSON per line
-        with open(self.hashFilePath, 'wt') as f:
-            pass
+        self.catalogDb = CatalogDatabase(self.catalogDbPath)
+        self.metadataCatalog = MetadataCatalogHDT(self.metadataCatalogPath, self.CHECKSUM_MODE)
 
     def loadCatalog(self):
         if not os.path.exists(self.metadataCatalogPath):
             raise Exception('Missing metadata folder!')
-        if not os.path.exists(self.hashFilePath):
-            raise Exception('Missing hash table!')
 
-        self.loadHashTable()
-        self.metadataCatalog = MetadataCatalog(self.metadataCatalogPath)
+        self.catalogDb = CatalogDatabase(self.catalogDbPath)
+        self.metadataCatalog = MetadataCatalogHDT(self.metadataCatalogPath, self.CHECKSUM_MODE)
 
     def loadHashTable(self):
         with jsonlines.open(self.hashFilePath) as reader:
@@ -76,20 +81,33 @@ class MediaCataloger(object):
 
                 for file, md in zip(filesToProcess, metadata):
                     md['HostName'] = hostname
-                    checksum = self._md5sum(file)
-                    md['File:MD5Sum'] = checksum
-                    # print(f'{file} -> {checksum}')
+                    checksum = self._checksum(file, self.CHECKSUM_MODE)
+                    md[self.checksumKey] = checksum
+                    print(f'\n{file} -> {checksum}')
                     if md['File:MIMEType'].startswith('audio'):
                         md['Acoustid:MatchResults'] = getAcoustid(file)
 
-                    self.metadataCatalog.write(md)
+                    metadataPath = self.metadataCatalog.write(md)
+                    self.catalogDb.write(md, metadataPath)
 
-                # Test readback - this assert fails, maybe due to character encoding?
-                # test = [self.metadataCatalog.read(md['File:MD5Sum']) for md in metadata]
-                # assert metadata == test
+                    # Readback test - TODO Move this to a test case
+                    md_readback = self.metadataCatalog.read(md[self.checksumKey])
+                    assert md_readback == md
+
+                    record = self.catalogDb.read(md[self.checksumKey])
+                    for key, value in zip(record.keys(), record):
+                        print(f'{key}: {value}')
+
+        self.catalogDb.commit()
 
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)
 
-    def _md5sum(self, filename: str) -> str:
-        return md5sum(filename, self.md5ChunkSize)
+    def _checksum(self, filename: str, mode: str) -> str:
+        if mode == 'MD5':
+            return md5sum(filename, self.hashChunkSize)
+        elif mode == 'SHA256':
+            return sha256sum(filename, self.hashChunkSize)
+        else:
+            raise ValueError(f'Invalid checksum mode ({mode})!')
+        
