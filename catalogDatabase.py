@@ -182,6 +182,14 @@ class CatalogDatabase(object):
 
         return records[0]
 
+    def exists(self, checksum):
+        self.cursor.execute(
+            'SELECT EXISTS(SELECT 1 FROM photos WHERE checksum = ?)',
+            (checksum,)
+        )
+        records = self.cursor.fetchall()
+        return records[0] == 1
+
     def commit(self):
         self.connection.commit()
 

@@ -75,7 +75,7 @@ class MediaCataloger(object):
                     if ext in self.MEDIA_EXTENSIONS:
                         filePath = os.path.join(dirName, fname)
                         checksum = self._checksum(filePath, self.CHECKSUM_MODE)
-                        if self.updateMode or not self.catalogDb.read(checksum):
+                        if self.updateMode or not self.catalogDb.exists(checksum):
                             filesToProcess.append((filePath, checksum))
                         else:
                             print(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
@@ -100,7 +100,7 @@ class MediaCataloger(object):
                         md['Acoustid:MatchResults'] = getAcoustid(file)
 
                     metadataPath = self.metadataCatalog.write(md)
-                    if self.updateMode or not self.catalogDb.read(md[self.checksumKey]):
+                    if self.updateMode or not self.catalogDb.exists(md[self.checksumKey]):
                         self.catalogDb.write(md, metadataPath, self.updateMode)
 
                     # Readback test - TODO Move this to a test case
