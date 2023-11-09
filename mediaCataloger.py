@@ -75,6 +75,7 @@ class MediaCataloger(object):
                     if ext in self.MEDIA_EXTENSIONS:
                         filePath = os.path.join(dirName, fname)
                         checksum = self._checksum(filePath, self.CHECKSUM_MODE)
+                        # TODO Extend the database check to also look for same capture device and filename/time in case of corruption
                         if self.updateMode or not self.catalogDb.exists(checksum):
                             filesToProcess.append((filePath, checksum))
                         else:
@@ -89,6 +90,8 @@ class MediaCataloger(object):
                 metadata = self._getMetadata(files)
 
                 for file, md, checksum in zip(files, metadata, checksums):
+                    # TODO This probably needs to be more robust to the range of bad files
+                    # And should this be here or upstream in the filesToProcess generation?
                     if md['File:FileSize'] == 0:
                         raise Exception('File size is zero!')
                     md['HostName'] = hostname
@@ -99,9 +102,8 @@ class MediaCataloger(object):
                     if md['File:MIMEType'].startswith('audio'):
                         md['Acoustid:MatchResults'] = getAcoustid(file)
 
-                    metadataPath = self.metadataCatalog.write(md)
-                    if self.updateMode or not self.catalogDb.exists(md[self.checksumKey]):
-                        self.catalogDb.write(md, metadataPath, self.updateMode)
+                    metadataPath = self.metadataCatalog.write(md, self.updateMode)
+                    self.catalogDb.write(md, metadataPath, self.updateMode)
 
                     # Readback test - TODO Move this to a test case
                     md_readback = self.metadataCatalog.read(md[self.checksumKey])

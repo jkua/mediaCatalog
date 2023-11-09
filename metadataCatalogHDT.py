@@ -28,7 +28,7 @@ class MetadataCatalogHDT(MetadataCatalog):
         self.hashKey = f'File:{hashMode}Sum'
         self.hashTree = HashDirectoryTree(path, hashLength=32, segmentLength=2, depth=2)
 
-    def write(self, metadata):
+    def write(self, metadata, updateMode):
         hash_ = metadata[self.hashKey]
         metadataPath = self.getMetadataPath(hash_)
         metadataDirectory, _ = os.path.split(metadataPath)
@@ -36,20 +36,26 @@ class MetadataCatalogHDT(MetadataCatalog):
             os.makedirs(metadataDirectory)
 
         # Check for existing file
+        write_ = True
         if os.path.exists(metadataPath):
             print(f'Metadata exists for this hash! {hash_}')
-            existingMetadata = json.loads(open(metadataPath, 'rt').read())
-            if existingMetadata['File:FileSize'] == metadata['File:FileSize']:
-                print(f'    Same file: {metadata["SourceFile"]}, Size: {metadata["File:FileSize"]}')
-                print(f'        updating metadata...')
+            if updateMode:
+                existingMetadata = json.loads(open(metadataPath, 'rt').read())
+                if existingMetadata['File:FileSize'] == metadata['File:FileSize']:
+                    print(f'    Same file: {metadata["SourceFile"]}, Size: {metadata["File:FileSize"]}')
+                    print(f'        updating metadata...')
+                else:
+                    print(f'    Different filesizes!')
+                    print(f'        Existing: {existingMetadata["File:FileSize"]}')
+                    print(f'             New: {metadata["File:FileSize"]}')
+                    raise Exception('Hash collision! Do not know what to do!')
             else:
-                print(f'    Different filenames! Is this a duplicate!')
-                print(f'        Existing: {existingMetadata["SourceFile"]}')
-                print(f'             New: {metadata["SourceFile"]}')
-                raise Exception('Hash collision! Do not know what to do!')
+                print('    Will not update metadata.')
+                write_ = False
 
-        with open(metadataPath, 'wt') as f:
-            f.write(json.dumps(metadata) + '\n')
+        if write_:
+            with open(metadataPath, 'wt') as f:
+                f.write(json.dumps(metadata) + '\n')
 
         return metadataPath
 

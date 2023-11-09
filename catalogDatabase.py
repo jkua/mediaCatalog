@@ -78,100 +78,144 @@ class CatalogDatabase(object):
             )
 
         self.cursor.execute(
-            '''CREATE TABLE photos 
+            # TODO add mac address support
+            '''CREATE TABLE host
                 (
-                    checksum BLOB PRIMARY KEY,
-                    file_name TEXT NOT NULL,
-                    directory TEXT NULL,
-                    host_name TEXT NULL,
-                    file_size INTEGER NOT NULL,
-                    file_modify_datetime DATETIME NOT NULL,
-                    file_mime_type TEXT NOT NULL,
-                    camera_model TEXT NULL,
-                    camera_serial_number TEXT NULL,
-                    capture_datetime DATETIME NULL,
-                    metadata_path TEXT NOT NULL,
-                    cloud_bucket_name TEXT NULL,
-                    cloud_object_name TEXT NULL
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    UNIQUE(name)
                 )
             '''
             )
 
+        self.cursor.execute(
+            '''CREATE TABLE mime_type
+                (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    type TEXT UNIQUE NOT NULL
+                )
+            '''
+            )
+
+        self.cursor.execute(
+            '''CREATE TABLE cloud_storage 
+                (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    bucket TEXT NOT NULL,
+                    UNIQUE(name, bucket)
+                )
+            '''
+            )
+
+        self.cursor.execute(
+            '''CREATE TABLE capture_device
+                (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    make TEXT NULL,
+                    model TEXT NULL,
+                    serial_number TEXT NULL,
+                    UNIQUE(make, model, serial_number)
+                )
+            '''
+            )
+
+        self.cursor.execute(
+            '''CREATE TABLE file
+                (
+                    checksum BLOB PRIMARY KEY,
+                    file_name TEXT NOT NULL,
+                    directory TEXT NULL,
+                    host_id INTEGER NULL,
+                    file_size INTEGER NOT NULL,
+                    file_modify_datetime DATETIME NOT NULL,
+                    file_mime_type_id INTEGER NULL,
+                    capture_device_id INTEGER NULL,
+                    capture_datetime DATETIME NULL,
+                    metadata_path TEXT NOT NULL,
+                    cloud_storage_id INTEGER NULL,
+                    cloud_object_name TEXT NULL,
+                    FOREIGN KEY(host_id) REFERENCES host(id) ON DELETE SET NULL,
+                    FOREIGN KEY(file_mime_type_id) REFERENCES mime_type(id) ON DELETE SET NULL,
+                    FOREIGN KEY(capture_device_id) REFERENCES capture_device(id) ON DELETE SET NULL,
+                    FOREIGN KEY(cloud_storage_id) REFERENCES cloud_storage(id) ON DELETE SET NULL
+                )
+            '''
+            )        
+
         self.connection.commit()
 
     def write(self, metadata, metadataPath, updateMode=False):
-        try:
-            self.cursor.execute(
-                '''INSERT INTO photos
+        hostId = self.getHostId(metadata['HostName'], insert=True)
+        mimeTypeId = self.getMimeTypeId(metadata['File:MIMEType'], insert=True)
+        captureDeviceId = self.getCaptureDeviceId(metadata['EXIF:Make'], metadata['EXIF:Model'], metadata['EXIF:SerialNumber'], insert=True)
+
+        command = '''INSERT INTO file
                     (
                         checksum, 
                         file_name,
                         directory,
-                        host_name, 
+                        host_id, 
                         file_size, 
                         file_modify_datetime,
-                        file_mime_type,
-                        camera_model,
-                        camera_serial_number,
+                        file_mime_type_id,
+                        capture_device_id,
                         capture_datetime, 
                         metadata_path
                     )
                     VALUES
                     (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
-                ''',
-                (
+                '''
+        values = (
                     metadata['File:SHA256Sum'],
                     metadata['File:FileName'],
                     metadata['File:Directory'],
-                    metadata['HostName'],
+                    hostId,
                     metadata['File:FileSize'],
                     metadata['File:FileModifyDate'],
-                    metadata['File:MIMEType'],
-                    metadata.get('EXIF:Model'),
-                    metadata.get('EXIF:SerialNumber'),
+                    mimeTypeId,
+                    captureDeviceId,
                     utils.getPreciseCaptureTimeFromExif(metadata),
                     metadataPath
                 )
-            )
-        except sqlite3.IntegrityError as e:
-            if updateMode:
-                self.cursor.execute(
-                    '''UPDATE photos
+
+        if updateMode:
+            command += ''' ON CONFLICT(checksum) DO UPDATE
                         SET file_name = ?,
                             directory = ?,
-                            host_name = ?, 
+                            host_id = ?, 
                             file_size = ?, 
                             file_modify_datetime = ?,
-                            file_mime_type = ?,
-                            camera_model = ?,
-                            camera_serial_number = ?,
+                            file_mime_type_id = ?,
+                            capture_device_id = ?,
                             capture_datetime = ?, 
                             metadata_path = ?
                         WHERE
                             checksum = ?
-                    ''',
-                    (
+                '''
+            values += (
                         metadata['File:FileName'],
                         metadata['File:Directory'],
-                        metadata['HostName'],
+                        hostId,
                         metadata['File:FileSize'],
                         metadata['File:FileModifyDate'],
-                        metadata['File:MIMEType'],
-                        metadata.get('EXIF:Model'),
-                        metadata.get('EXIF:SerialNumber'),
+                        mimeTypeId,
+                        captureDeviceId,
                         utils.getPreciseCaptureTimeFromExif(metadata),
                         metadataPath,
                         metadata['File:SHA256Sum']
                     )
-                )
-            else:
-                raise e
+        try:
+            self.cursor.execute(command, values)
+        except sqlite3.IntegrityError as e:
+            if not updateMode:
+                print(f'WARNING: File already in database! Ignoring.')
 
     def read(self, checksum):
         self.cursor.execute(
-            'SELECT * FROM photos WHERE checksum = ?',
+            'SELECT * FROM file WHERE checksum = ?',
             (checksum,)
         )
         records = self.cursor.fetchall()
@@ -184,7 +228,7 @@ class CatalogDatabase(object):
 
     def exists(self, checksum):
         self.cursor.execute(
-            'SELECT EXISTS(SELECT 1 FROM photos WHERE checksum = ?)',
+            'SELECT EXISTS(SELECT 1 FROM file WHERE checksum = ?)',
             (checksum,)
         )
         records = self.cursor.fetchall()
@@ -196,6 +240,58 @@ class CatalogDatabase(object):
     def close(self):
         self.connection.close()
 
+    def getHostId(self, hostName, insert=False):
+        # TODO: Add MAC address support
+        if insert:
+            self.cursor.execute(
+                'INSERT INTO host(name) VALUES (?) ON CONFLICT(name) DO NOTHING',
+                (hostName,)
+            )
+
+        self.cursor.execute(
+            'SELECT id FROM host WHERE name = ?',
+            (hostName,)
+        )
+        records = self.cursor.fetchall()
+        if len(records) > 1:
+            import pdb; pdb.set_trace()
+            raise RuntimeError(f'Duplicate hostnames ({hostName}) in database!')
+
+        return records[0][0]
+
+    def getMimeTypeId(self, mimeType, insert=False):
+        if insert:
+            self.cursor.execute(
+                'INSERT INTO mime_type(type) VALUES (?) ON CONFLICT(type) DO NOTHING',
+                (mimeType,)
+            )
+
+        self.cursor.execute(
+            'SELECT id FROM mime_type WHERE type = ?',
+            (mimeType,)
+        )
+        records = self.cursor.fetchall()
+        if len(records) > 1:
+            raise RuntimeError(f'Duplicate mime types ({mimeType}) in database!')
+
+        return records[0][0]
+
+    def getCaptureDeviceId(self, make, model, serialNumber, insert=False):
+        if insert:
+            self.cursor.execute(
+                'INSERT INTO capture_device(make, model, serial_number) VALUES (?, ?, ?) ON CONFLICT(make, model, serial_number) DO NOTHING',
+                (make, model, serialNumber)
+            )
+
+        self.cursor.execute(
+            'SELECT id FROM capture_device WHERE make = ? AND model = ? AND serial_number = ?',
+            (make, model, serialNumber)
+        )
+        records = self.cursor.fetchall()
+        if len(records) > 1:
+            raise RuntimeError(f'Duplicate capture devices ({make}, {model}, {serialNumber}) in database!')
+
+        return records[0][0]
 
 if __name__=='__main__':
     catalog = CatalogDatabase('test.db')
