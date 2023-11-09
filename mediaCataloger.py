@@ -18,7 +18,7 @@ class MediaCataloger(object):
     MEDIA_EXTENSIONS = ['cr2', 'cr3', 'jpg', 'jpeg', 'heif', 'mov', 'mp4', 'mp3', 'm4a']
     CHECKSUM_MODE = 'SHA256'
 
-    def __init__(self, catalogPath):
+    def __init__(self, catalogPath, updateMode=False):
         self.catalogPath = catalogPath
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
@@ -28,6 +28,7 @@ class MediaCataloger(object):
         self.catalogDb = None
         self.metadataCatalog = None
         self.checksumKey = f'File:{self.CHECKSUM_MODE}Sum'
+        self.updateMode = updateMode
 
         self.open()
 
@@ -67,28 +68,40 @@ class MediaCataloger(object):
         for dirName, subdirList, fileList in os.walk(path):
             print('Found directory: %s' % dirName)
             filesToProcess = []
-            for fname in fileList:
+            for fname in sorted(fileList):
                 head, ext = os.path.splitext(fname)
                 if len(ext) > 1:
                     ext = ext[1:].lower()
                     if ext in self.MEDIA_EXTENSIONS:
-                        filesToProcess.append(os.path.join(dirName, fname))
+                        filePath = os.path.join(dirName, fname)
+                        checksum = self._checksum(filePath, self.CHECKSUM_MODE)
+                        if self.updateMode or not self.catalogDb.read(checksum):
+                            filesToProcess.append((filePath, checksum))
+                        else:
+                            print(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
 
-            filesToProcess.sort()
+            if not filesToProcess:
+                continue
+
+            files, checksums = zip(*filesToProcess)
             if len(filesToProcess) > 0:
                 print('Extracting metadata')
-                metadata = self._getMetadata(filesToProcess)
+                metadata = self._getMetadata(files)
 
-                for file, md in zip(filesToProcess, metadata):
+                for file, md, checksum in zip(files, metadata, checksums):
+                    if md['File:FileSize'] == 0:
+                        raise Exception('File size is zero!')
                     md['HostName'] = hostname
-                    checksum = self._checksum(file, self.CHECKSUM_MODE)
+                    
                     md[self.checksumKey] = checksum
                     print(f'\n{file} -> {checksum}')
+
                     if md['File:MIMEType'].startswith('audio'):
                         md['Acoustid:MatchResults'] = getAcoustid(file)
 
                     metadataPath = self.metadataCatalog.write(md)
-                    self.catalogDb.write(md, metadataPath)
+                    if self.updateMode or not self.catalogDb.read(md[self.checksumKey]):
+                        self.catalogDb.write(md, metadataPath, self.updateMode)
 
                     # Readback test - TODO Move this to a test case
                     md_readback = self.metadataCatalog.read(md[self.checksumKey])

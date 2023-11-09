@@ -39,8 +39,8 @@ class MetadataCatalogHDT(MetadataCatalog):
         if os.path.exists(metadataPath):
             print(f'Metadata exists for this hash! {hash_}')
             existingMetadata = json.loads(open(metadataPath, 'rt').read())
-            if existingMetadata['SourceFile'] == metadata['SourceFile']:
-                print(f'    Same file: {metadata["SourceFile"]}')
+            if existingMetadata['File:FileSize'] == metadata['File:FileSize']:
+                print(f'    Same file: {metadata["SourceFile"]}, Size: {metadata["File:FileSize"]}')
                 print(f'        updating metadata...')
             else:
                 print(f'    Different filenames! Is this a duplicate!')

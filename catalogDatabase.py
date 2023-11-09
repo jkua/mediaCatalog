@@ -83,52 +83,91 @@ class CatalogDatabase(object):
                     checksum BLOB PRIMARY KEY,
                     file_name TEXT NOT NULL,
                     directory TEXT NULL,
+                    host_name TEXT NULL,
                     file_size INTEGER NOT NULL,
                     file_modify_datetime DATETIME NOT NULL,
                     file_mime_type TEXT NOT NULL,
                     camera_model TEXT NULL,
                     camera_serial_number TEXT NULL,
                     capture_datetime DATETIME NULL,
-                    metadata_path TEXT NOT NULL
+                    metadata_path TEXT NOT NULL,
+                    cloud_bucket_name TEXT NULL,
+                    cloud_object_name TEXT NULL
                 )
             '''
             )
 
         self.connection.commit()
 
-    def write(self, metadata, metadataPath):
-        self.cursor.execute(
-            '''INSERT INTO photos
+    def write(self, metadata, metadataPath, updateMode=False):
+        try:
+            self.cursor.execute(
+                '''INSERT INTO photos
+                    (
+                        checksum, 
+                        file_name,
+                        directory,
+                        host_name, 
+                        file_size, 
+                        file_modify_datetime,
+                        file_mime_type,
+                        camera_model,
+                        camera_serial_number,
+                        capture_datetime, 
+                        metadata_path
+                    )
+                    VALUES
+                    (
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    )
+                ''',
                 (
-                    checksum, 
-                    file_name,
-                    directory, 
-                    file_size, 
-                    file_modify_datetime,
-                    file_mime_type,
-                    camera_model,
-                    camera_serial_number,
-                    capture_datetime, 
-                    metadata_path
+                    metadata['File:SHA256Sum'],
+                    metadata['File:FileName'],
+                    metadata['File:Directory'],
+                    metadata['HostName'],
+                    metadata['File:FileSize'],
+                    metadata['File:FileModifyDate'],
+                    metadata['File:MIMEType'],
+                    metadata.get('EXIF:Model'),
+                    metadata.get('EXIF:SerialNumber'),
+                    utils.getPreciseCaptureTimeFromExif(metadata),
+                    metadataPath
                 )
-                VALUES
-                (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                )
-            ''',
-            (
-                metadata['File:SHA256Sum'],
-                metadata['File:FileName'],
-                metadata['File:Directory'],
-                metadata['File:FileSize'],
-                metadata['File:FileModifyDate'],
-                metadata['File:MIMEType'],
-                metadata.get('EXIF:Model'),
-                metadata.get('EXIF:SerialNumber'),
-                utils.getPreciseCaptureTimeFromExif(metadata),
-                metadataPath
             )
-        )
+        except sqlite3.IntegrityError as e:
+            if updateMode:
+                self.cursor.execute(
+                    '''UPDATE photos
+                        SET file_name = ?,
+                            directory = ?,
+                            host_name = ?, 
+                            file_size = ?, 
+                            file_modify_datetime = ?,
+                            file_mime_type = ?,
+                            camera_model = ?,
+                            camera_serial_number = ?,
+                            capture_datetime = ?, 
+                            metadata_path = ?
+                        WHERE
+                            checksum = ?
+                    ''',
+                    (
+                        metadata['File:FileName'],
+                        metadata['File:Directory'],
+                        metadata['HostName'],
+                        metadata['File:FileSize'],
+                        metadata['File:FileModifyDate'],
+                        metadata['File:MIMEType'],
+                        metadata.get('EXIF:Model'),
+                        metadata.get('EXIF:SerialNumber'),
+                        utils.getPreciseCaptureTimeFromExif(metadata),
+                        metadataPath,
+                        metadata['File:SHA256Sum']
+                    )
+                )
+            else:
+                raise e
 
     def read(self, checksum):
         self.cursor.execute(
