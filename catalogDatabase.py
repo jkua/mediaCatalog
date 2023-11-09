@@ -293,6 +293,17 @@ class CatalogDatabase(object):
 
         return records[0][0]
 
+    def getFileCount(self):
+        self.cursor.execute('SELECT COUNT(checksum) FROM file')
+        records = self.cursor.fetchall()
+        return records[0][0]
+
+    def getFilesNotInCloud(self):
+        self.cursor.execute('SELECT checksum, file_name, directory FROM file WHERE cloud_storage_id IS NULL')
+        records = self.cursor.fetchall()
+        return records
+
+
 if __name__=='__main__':
     catalog = CatalogDatabase('test.db')
 
