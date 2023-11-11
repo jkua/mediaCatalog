@@ -111,7 +111,7 @@ class MediaCataloger(object):
 
                     self.catalogDb.printFileRecord(md[self.checksumKey])
 
-        self.catalogDb.commit()
+            self.catalogDb.commit()
 
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)

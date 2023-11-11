@@ -37,9 +37,9 @@ class CloudUploader(object):
 					raise Exception('Cloud object has a different checksum!')
 			
 			self.catalogDb.setCloudStorage(checksum, self.cloudStorage.projectId, self.cloudStorage.bucketName, objectName)
+			self.catalogDb.commit()
 			self.catalogDb.printFileRecord(checksum)
 
-		self.catalogDb.commit()
 		self.catalogDb.close()
 
 
