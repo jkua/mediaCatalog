@@ -2,3 +2,4 @@ jsonlines
 pyexiftool
 pyacoustid
 packaging
+google-cloud-storage

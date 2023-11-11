@@ -234,6 +234,17 @@ class CatalogDatabase(object):
         records = self.cursor.fetchall()
         return records[0] == 1
 
+    def setCloudStorage(self, checksum, projectId, bucketName, objectName):
+        cloudStorageId = self.getCloudStorageId(projectId, bucketName, insert=True)
+        self.cursor.execute(
+            '''UPDATE file
+                SET cloud_storage_id=?,
+                    cloud_object_name=?
+                WHERE checksum=?
+            ''',
+            (cloudStorageId, objectName, checksum)
+        )
+
     def commit(self):
         self.connection.commit()
 
@@ -293,6 +304,23 @@ class CatalogDatabase(object):
 
         return records[0][0]
 
+    def getCloudStorageId(self, projectId, bucket, insert=False):
+        if insert:
+            self.cursor.execute(
+                'INSERT INTO cloud_storage(name, bucket) VALUES (?, ?) ON CONFLICT(name, bucket) DO NOTHING',
+                (projectId, bucket)
+            )
+
+        self.cursor.execute(
+            'SELECT id FROM cloud_storage WHERE name = ? AND bucket = ?',
+            (projectId, bucket)
+        )
+        records = self.cursor.fetchall()
+        if len(records) > 1:
+            raise RuntimeError(f'Duplicate cloud storage entries ({projectId}, {bucket}) in database!')
+
+        return records[0][0]
+
     def getFileCount(self):
         self.cursor.execute('SELECT COUNT(checksum) FROM file')
         records = self.cursor.fetchall()
@@ -302,6 +330,11 @@ class CatalogDatabase(object):
         self.cursor.execute('SELECT checksum, file_name, directory FROM file WHERE cloud_storage_id IS NULL')
         records = self.cursor.fetchall()
         return records
+
+    def printFileRecord(self, checksum):
+        record = self.read(checksum)
+        for key, value in zip(record.keys(), record):
+            print(f'{key}: {value}')
 
 
 if __name__=='__main__':

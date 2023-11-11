@@ -109,9 +109,7 @@ class MediaCataloger(object):
                     md_readback = self.metadataCatalog.read(md[self.checksumKey])
                     assert md_readback == md
 
-                    record = self.catalogDb.read(md[self.checksumKey])
-                    for key, value in zip(record.keys(), record):
-                        print(f'{key}: {value}')
+                    self.catalogDb.printFileRecord(md[self.checksumKey])
 
         self.catalogDb.commit()
 
