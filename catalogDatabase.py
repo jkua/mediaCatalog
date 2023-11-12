@@ -215,7 +215,28 @@ class CatalogDatabase(object):
 
     def read(self, checksum):
         self.cursor.execute(
-            'SELECT * FROM file WHERE checksum = ?',
+            '''SELECT checksum,
+                    file_name,
+                    directory,
+                    host.name as host_name,
+                    file_size,
+                    file_modify_datetime,
+                    mime_type.type as file_mime_type,
+                    capture_device.make as capture_device_make,
+                    capture_device.model as capture_device_model,
+                    capture_device.serial_number as capture_device_serial_number,
+                    capture_datetime,
+                    metadata_path,
+                    cloud_storage.name as cloud_name,
+                    cloud_storage.bucket as cloud_bucket,
+                    cloud_object_name
+                FROM file
+                JOIN host on file.host_id = host.id
+                JOIN mime_type on file.file_mime_type_id = mime_type.id
+                JOIN capture_device on file.capture_device_id = capture_device.id
+                JOIN cloud_storage on file.cloud_storage_id = cloud_storage.id
+                WHERE checksum = ?
+            ''',
             (checksum,)
         )
         records = self.cursor.fetchall()
