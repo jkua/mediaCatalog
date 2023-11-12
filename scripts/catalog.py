@@ -2,7 +2,7 @@
 
 import logging
 
-from mediaCatalog import MediaCatalog
+from mediaCatalog.mediaCatalog import MediaCatalog
 
 if __name__=='__main__':
     import argparse

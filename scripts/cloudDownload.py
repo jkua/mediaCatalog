@@ -3,8 +3,8 @@
 import logging
 import os
 
-from mediaCatalog import MediaCatalog
-from googleCloudStorage import GoogleCloudStorage
+from mediaCatalog.mediaCatalog import MediaCatalog
+from mediaCatalog.googleCloudStorage import GoogleCloudStorage
 
 class CloudDownloader(object):
 	def __init__(self, catalog, cloudStorage):

@@ -1,7 +1,3 @@
-import os
-import json
-
-
 class MetadataCatalog(object):
     def __init__(self):
         pass

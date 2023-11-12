@@ -3,7 +3,7 @@
 import logging
 import os
 
-from mediaCatalog import MediaCatalog
+from mediaCatalog.mediaCatalog import MediaCatalog
 
 
 if __name__=='__main__':

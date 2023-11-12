@@ -1,7 +1,7 @@
 import os
 import json
 
-from metadataCatalog import MetadataCatalog
+from .metadataCatalog import MetadataCatalog
 
 class HashDirectoryTree(object):
     def __init__(self, rootPath, hashLength=32, segmentLength=2, depth=2):

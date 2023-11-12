@@ -1,15 +1,13 @@
 import os
-import glob
 import logging
 import socket
-import json
 import yaml
 
 import jsonlines
 
-from metadataCatalogHDT import MetadataCatalogHDT
-from catalogDatabase import CatalogDatabase
-from utils import md5sum, sha256sum, getMetadata, getAcoustid
+from .metadataCatalogHDT import MetadataCatalogHDT
+from .catalogDatabase import CatalogDatabase
+from .utils import md5sum, sha256sum, getMetadata, getAcoustid
 
 
 class MediaCatalog(object):

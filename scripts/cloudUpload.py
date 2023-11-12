@@ -4,7 +4,7 @@ import logging
 import os
 
 from mediaCatalog import MediaCatalog
-from googleCloudStorage import GoogleCloudStorage
+from mediaCatalog.googleCloudStorage import GoogleCloudStorage
 
 class CloudUploader(object):
 	def __init__(self, catalog, cloudStorage):

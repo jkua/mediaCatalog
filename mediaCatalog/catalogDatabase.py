@@ -1,9 +1,7 @@
-import os
 import sqlite3
-import json
 from packaging.version import Version
 
-import utils
+from .utils import getPreciseCaptureTimeFromExif
 
 class CatalogDatabase(object):
     SCHEMA_VERSION = Version('0.1.0')
@@ -175,7 +173,7 @@ class CatalogDatabase(object):
                     metadata['File:FileModifyDate'],
                     mimeTypeId,
                     captureDeviceId,
-                    utils.getPreciseCaptureTimeFromExif(metadata),
+                    getPreciseCaptureTimeFromExif(metadata),
                 )
 
         if updateMode:
@@ -199,7 +197,7 @@ class CatalogDatabase(object):
                         metadata['File:FileModifyDate'],
                         mimeTypeId,
                         captureDeviceId,
-                        utils.getPreciseCaptureTimeFromExif(metadata),
+                        getPreciseCaptureTimeFromExif(metadata),
                         metadata['File:SHA256Sum']
                     )
         try:
