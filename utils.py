@@ -35,7 +35,7 @@ def getPreciseCaptureTimeFromExif(metadata):
     if metadata.get('EXIF:SubSecTimeOriginal'):
         captureTime += f".{metadata.get('EXIF:SubSecTimeOriginal')}"
 
-    if metadata.get(metadata['EXIF:OffsetTimeOriginal']):
+    if metadata.get('EXIF:OffsetTimeOriginal'):
         captureTime += metadata['EXIF:OffsetTimeOriginal']
 
     return captureTime

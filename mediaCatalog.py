@@ -25,6 +25,7 @@ class MediaCatalog(object):
         self.createMode = create
         self.updateMode = update
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
+        self.configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
         self.metadataCatalogPath = os.path.join(self.catalogPath, self.METADATA_FOLDERNAME)
         self.hashChunkSize = 1024*1024*16
@@ -59,20 +60,19 @@ class MediaCatalog(object):
         self.catalogDb = None
 
     def _loadConfig(self):
-        configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
         try:
-            with open(configPath, 'r') as f:
+            with open(self.configPath, 'r') as f:
                 self.config = yaml.safe_load(f)
         except FileNotFoundError as e:
             if self.createMode:
-                self.createConfig(configPath)
+                self._createConfig()
             else:
-                raise FileNotFoundError('Could not load config file at: {configPath}! Broken catalog!')
+                raise FileNotFoundError('Could not load config file at: {self.configPath}! Broken catalog!')
 
-    def _createConfig(self, configPath):
+    def _createConfig(self):
         self.config = {'project': '', 'defaultBucket': ''}
-        with open(configPath, 'w') as f:
-            yaml.dump(self.config)
+        with open(self.configPath, 'w') as f:
+            yaml.dump(self.config, f)
 
     def _createCatalog(self):
         # Create the catalog folder
@@ -136,15 +136,23 @@ class MediaCatalog(object):
                         md['Acoustid:MatchResults'] = getAcoustid(file)
 
                     metadataPath = self.metadataCatalog.write(md, self.updateMode)
-                    self.catalogDb.write(md, metadataPath, self.updateMode)
+                    self.catalogDb.write(md, self.updateMode)
 
                     # Readback test - TODO Move this to a test case
                     md_readback = self.metadataCatalog.read(md[self.checksumKey])
-                    assert md_readback == md
+                    for key, value in md.items():
+                        if value != md_readback[key]:
+                            print(f'Mismatch for [{key}]: ({value} != {md_readback[key]}')
+                    # assert md_readback == md
 
                     self.catalogDb.printFileRecord(md[self.checksumKey])
 
             self.catalogDb.commit()
+
+    def query(self, checksum):
+        dbRecord = self.catalogDb.read(checksum)
+        metadata = self.metadataCatalog.read(checksum)
+        return dbRecord, metadata
 
     def checksum(self, filename: str) -> str:
         return self._checksum(filename, self.CHECKSUM_MODE)

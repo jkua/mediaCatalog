@@ -16,7 +16,7 @@ class HashDirectoryTree(object):
 
     def exist(self, hash_):
         path = self.getPath(hash_)
-        return os.path.exists(path)
+        return os.path.exists(os.path.join(self.rootPath, path))
 
 
 class MetadataCatalogHDT(MetadataCatalog):

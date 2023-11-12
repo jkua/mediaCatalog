@@ -12,6 +12,7 @@ if __name__=='__main__':
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
 	parser.add_argument('--path', '-p', help='File path to query')
 	parser.add_argument('--checksum', '-s', help='Checksum to query')
+	parser.add_argument('--metadata', '-m', action='store_true', help='Print metadata')
 	args = parser.parse_args()
 
 	with MediaCatalog(args.catalog) as catalog:
@@ -21,4 +22,15 @@ if __name__=='__main__':
 			else:
 				args.checksum = catalog.checksum(args.path)
 
-		catalog.catalogDb.printFileRecord(args.checksum)
+		dbRecord, metadata = catalog.query(args.checksum)
+
+		print('\nDatabase record')
+		print('-----------------')
+		for key, value in zip(dbRecord.keys(), dbRecord):
+			print(f'{key}: {value}')
+		
+		if args.metadata:
+			print('\nMetadata')
+			print('----------')
+			for key, value in metadata.items():
+				print(f'{key}: {value}')

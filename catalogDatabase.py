@@ -132,7 +132,6 @@ class CatalogDatabase(object):
                     file_mime_type_id INTEGER NULL,
                     capture_device_id INTEGER NULL,
                     capture_datetime DATETIME NULL,
-                    metadata_path TEXT NOT NULL,
                     cloud_storage_id INTEGER NULL,
                     cloud_object_name TEXT NULL,
                     FOREIGN KEY(host_id) REFERENCES host(id) ON DELETE SET NULL,
@@ -145,10 +144,10 @@ class CatalogDatabase(object):
 
         self.connection.commit()
 
-    def write(self, metadata, metadataPath, updateMode=False):
+    def write(self, metadata, updateMode=False):
         hostId = self.getHostId(metadata['HostName'], insert=True)
         mimeTypeId = self.getMimeTypeId(metadata['File:MIMEType'], insert=True)
-        captureDeviceId = self.getCaptureDeviceId(metadata['EXIF:Make'], metadata['EXIF:Model'], metadata['EXIF:SerialNumber'], insert=True)
+        captureDeviceId = self.getCaptureDeviceId(metadata.get('EXIF:Make'), metadata.get('EXIF:Model'), metadata.get('EXIF:SerialNumber'), insert=True)
 
         command = '''INSERT INTO file
                     (
@@ -160,12 +159,11 @@ class CatalogDatabase(object):
                         file_modify_datetime,
                         file_mime_type_id,
                         capture_device_id,
-                        capture_datetime, 
-                        metadata_path
+                        capture_datetime
                     )
                     VALUES
                     (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
                 '''
         values = (
@@ -178,7 +176,6 @@ class CatalogDatabase(object):
                     mimeTypeId,
                     captureDeviceId,
                     utils.getPreciseCaptureTimeFromExif(metadata),
-                    metadataPath
                 )
 
         if updateMode:
@@ -190,8 +187,7 @@ class CatalogDatabase(object):
                             file_modify_datetime = ?,
                             file_mime_type_id = ?,
                             capture_device_id = ?,
-                            capture_datetime = ?, 
-                            metadata_path = ?
+                            capture_datetime = ?
                         WHERE
                             checksum = ?
                 '''
@@ -204,7 +200,6 @@ class CatalogDatabase(object):
                         mimeTypeId,
                         captureDeviceId,
                         utils.getPreciseCaptureTimeFromExif(metadata),
-                        metadataPath,
                         metadata['File:SHA256Sum']
                     )
         try:
@@ -226,15 +221,14 @@ class CatalogDatabase(object):
                     capture_device.model as capture_device_model,
                     capture_device.serial_number as capture_device_serial_number,
                     capture_datetime,
-                    metadata_path,
                     cloud_storage.name as cloud_name,
                     cloud_storage.bucket as cloud_bucket,
                     cloud_object_name
                 FROM file
-                JOIN host on file.host_id = host.id
-                JOIN mime_type on file.file_mime_type_id = mime_type.id
-                JOIN capture_device on file.capture_device_id = capture_device.id
-                JOIN cloud_storage on file.cloud_storage_id = cloud_storage.id
+                LEFT JOIN host on file.host_id = host.id
+                LEFT JOIN mime_type on file.file_mime_type_id = mime_type.id
+                LEFT JOIN capture_device on file.capture_device_id = capture_device.id
+                LEFT JOIN cloud_storage on file.cloud_storage_id = cloud_storage.id
                 WHERE checksum = ?
             ''',
             (checksum,)
@@ -309,19 +303,47 @@ class CatalogDatabase(object):
         return records[0][0]
 
     def getCaptureDeviceId(self, make, model, serialNumber, insert=False):
-        if insert:
-            self.cursor.execute(
-                'INSERT INTO capture_device(make, model, serial_number) VALUES (?, ?, ?) ON CONFLICT(make, model, serial_number) DO NOTHING',
-                (make, model, serialNumber)
-            )
+        if make is None and model is None and serialNumber is None:
+            return None
 
-        self.cursor.execute(
-            'SELECT id FROM capture_device WHERE make = ? AND model = ? AND serial_number = ?',
-            (make, model, serialNumber)
-        )
+        if insert:
+            try:
+                self._getCaptureDeviceId(make, model, serialNumber)
+            except LookupError as e:
+                self.cursor.execute(
+                    'INSERT INTO capture_device(make, model, serial_number) VALUES (?, ?, ?) ON CONFLICT(make, model, serial_number) DO NOTHING',
+                    (make, model, serialNumber)
+                )    
+
+        return self._getCaptureDeviceId(make, model, serialNumber)
+
+    def _getCaptureDeviceId(self, make, model, serialNumber):
+        command = 'SELECT id FROM capture_device WHERE '
+        values = []
+        commandTokens = []
+        if make is not None:
+            commandTokens.append('make = ?')
+            values.append(make)
+        else:
+            commandTokens.append('make IS NULL')
+        if model is not None:
+            commandTokens.append('model = ?')
+            values.append(model)
+        else:
+            commandTokens.append('model IS NULL')
+        if serialNumber is not None:
+            commandTokens.append('serial_number = ?')
+            values.append(serialNumber)
+        else:
+            commandTokens.append('serial_number IS NULL')
+
+        command += ' AND '.join(commandTokens)
+        self.cursor.execute(command, values)
         records = self.cursor.fetchall()
         if len(records) > 1:
-            raise RuntimeError(f'Duplicate capture devices ({make}, {model}, {serialNumber}) in database!')
+            raise RuntimeError(f'Duplicate ({len(records)}) capture devices ({make}, {model}, {serialNumber}) in database!')
+        elif len(records) == 0:
+            raise LookupError(f'Failed to find capture device ({make}, {model}, {serialNumber}) in database!')
 
         return records[0][0]
 
