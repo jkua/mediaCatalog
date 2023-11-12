@@ -55,10 +55,11 @@ class GoogleCloudStorage(CloudStorage):
         blob = bucket.blob(objectName)
         blob.download_to_filename(destinationPath)
 
-    def _uploadFile(self, sourcePath, bucketName, objectName):
+    def _uploadFile(self, sourcePath, bucketName, objectName, mimeType=None):
         bucket = self.storageClient.bucket(bucketName)
         blob = bucket.blob(objectName)
-        blob.upload_from_filename(sourcePath, checksum='crc32c')
+
+        blob.upload_from_filename(sourcePath, content_type=mimeType, checksum='crc32c')
 
     def _deleteFile(self, bucketName, objectName):
         bucket = self.storageClient.bucket(bucketName)

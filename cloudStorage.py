@@ -28,8 +28,8 @@ class CloudStorage(object):
     def downloadFile(self, objectName, destinationPath):
         self._downloadFile(self.bucketName, objectName, destinationPath)
 
-    def uploadFile(self, sourcePath, objectName):
-        self._uploadFile(sourcePath, self.bucketName, objectName)
+    def uploadFile(self, sourcePath, objectName, mimeType=None):
+        self._uploadFile(sourcePath, self.bucketName, objectName, mimeType)
 
     def deleteFile(self, objectName):
         self._deleteFile(self.bucketName, objectName)
@@ -43,7 +43,7 @@ class CloudStorage(object):
     def _downloadFile(self, bucketName, objectName, destinationPath):
         raise NotImplementedError
 
-    def _uploadFile(self, sourcePath, bucketName, objectName):
+    def _uploadFile(self, sourcePath, bucketName, objectName, mimeType=None):
         raise NotImplementedError
 
     def _deleteFile(self, bucketName, objectName):

@@ -348,7 +348,16 @@ class CatalogDatabase(object):
         return records[0][0]
 
     def getFilesNotInCloud(self):
-        self.cursor.execute('SELECT checksum, file_name, directory FROM file WHERE cloud_storage_id IS NULL')
+        self.cursor.execute(
+            '''SELECT checksum, 
+                    file_name, 
+                    directory, 
+                    mime_type.type as file_mime_type 
+                FROM file 
+                JOIN mime_type ON file.file_mime_type_id = mime_type.id
+                WHERE cloud_storage_id IS NULL
+            '''
+        )
         records = self.cursor.fetchall()
         return records
 

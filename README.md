@@ -1,4 +1,4 @@
-# photoCatalog
+# mediaCatalog
 
 ## Installation (MacOS)
 brew install exiftool

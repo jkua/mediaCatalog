@@ -25,7 +25,7 @@ class CloudUploader(object):
 		print(f'\n{len(filesToUpload)}/{totalFileCount} ({notUploadedPercentage:.3f} %) files to be uploaded')
 
 		
-		for i, (checksum, filename, directory) in enumerate(filesToUpload, 1):
+		for i, (checksum, filename, directory, mimeType) in enumerate(filesToUpload, 1):
 			sourcePath = os.path.join(directory, filename)
 			objectName = os.path.join('file', checksum)
 
@@ -33,7 +33,7 @@ class CloudUploader(object):
 			print(f'[{i}/{len(filesToUpload)} ({uploadedPercentage:.3f} %)] {sourcePath} -> {objectName}')
 			
 			if not cloudStorage.fileExists(objectName):
-				self.cloudStorage.uploadFile(sourcePath, objectName)
+				self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
 			else:
 				print('    WARNING: Object already exists in the cloud!')
 				if cloudStorage.validateFile(objectName, sourcePath):
