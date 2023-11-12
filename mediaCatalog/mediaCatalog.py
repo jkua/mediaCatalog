@@ -110,6 +110,8 @@ class MediaCatalog(object):
                             filesToProcess.append((filePath, checksum))
                         else:
                             print(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
+                    else:
+                        print(f'WARNING: Ignoring non-media file: {fname}')
 
             if not filesToProcess:
                 continue
