@@ -1,7 +1,6 @@
 import pytest
 import os
 import yaml
-from unittest.mock import MagicMock
 from mediaCatalog.mediaCatalog import MediaCatalog
 
 class TestMediaCatalog:
@@ -63,5 +62,3 @@ class TestMediaCatalog:
     def test_invalid_checksum_mode(self, catalog):
         with pytest.raises(ValueError):
             catalog._checksum('test.txt', 'INVALID')
-
-    # Add more tests as needed for other methods
