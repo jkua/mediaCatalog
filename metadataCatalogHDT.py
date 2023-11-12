@@ -28,6 +28,9 @@ class MetadataCatalogHDT(MetadataCatalog):
         self.hashKey = f'File:{hashMode}Sum'
         self.hashTree = HashDirectoryTree(path, hashLength=32, segmentLength=2, depth=2)
 
+        if not os.path.exists(self.path):
+            raise Exception('Missing metadata folder!')
+
     def write(self, metadata, updateMode):
         hash_ = metadata[self.hashKey]
         metadataPath = self.getMetadataPath(hash_)

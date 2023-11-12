@@ -1,5 +1,7 @@
 class CloudStorage(object):
-    def __init__(self, bucketName=None):
+    def __init__(self, bucketName):
+        if not bucketName.strip():
+            raise Exception('bucketName is not set!')
         self.bucketName = bucketName
 
     def listBuckets(self):

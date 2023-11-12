@@ -11,7 +11,7 @@ class CatalogDatabase(object):
 
     def __init__(self, dbPath):
         self.dbPath = dbPath
-        print(self.dbPath)
+        print(f'Opening catalog database at: {self.dbPath}')
         self._open_db()
 
     def _open_db(self):
@@ -333,6 +333,7 @@ class CatalogDatabase(object):
 
     def printFileRecord(self, checksum):
         record = self.read(checksum)
+        print('')
         for key, value in zip(record.keys(), record):
             print(f'{key}: {value}')
 

@@ -3,15 +3,14 @@
 import logging
 import os
 
-from catalogDatabase import CatalogDatabase
+from mediaCatalog import MediaCatalog
 from googleCloudStorage import GoogleCloudStorage
 
 class CloudDownloader(object):
-	CATALOG_DB_FILENAME = 'catalog.db'
-	def __init__(self, catalogPath, cloudStorage):
-		self.catalogPath = catalogPath
+	def __init__(self, catalog, cloudStorage):
+		self.catalog = catalog
 		self.cloudStorage = cloudStorage
-		self.catalogDb = CatalogDatabase(os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME))
+		self.catalogDb = self.catalog.catalogDb
 
 	def download(self, checksum, destinationPath):
 		record = self.catalogDb.read(checksum)
@@ -31,12 +30,11 @@ if __name__=='__main__':
 	import argparse
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
-	parser.add_argument('--project', '-p', required=True, help='Cloud project ID')
-	parser.add_argument('--bucket', '-b', required=True, help='Cloud bucket name')
 	parser.add_argument('checksum', help='Checksum of file to download')
 	parser.add_argument('destination', help='Path to download file to')
 	args = parser.parse_args()
 
-	cloudStorage = GoogleCloudStorage(args.project, args.bucket)
-	downloader = CloudDownloader(args.catalog, cloudStorage)
-	downloader.download(args.checksum, args.destination)
+	with MediaCatalog(args.catalog) as catalog:
+		cloudStorage = GoogleCloudStorage(catalog.config['project'], catalog.config['defaultBucket'])
+		downloader = CloudDownloader(catalog, cloudStorage)
+		downloader.download(args.checksum, args.destination)

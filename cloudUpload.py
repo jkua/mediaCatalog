@@ -3,23 +3,28 @@
 import logging
 import os
 
-from catalogDatabase import CatalogDatabase
+from mediaCatalog import MediaCatalog
 from googleCloudStorage import GoogleCloudStorage
 
 class CloudUploader(object):
-	CATALOG_DB_FILENAME = 'catalog.db'
-	def __init__(self, catalogPath, cloudStorage):
-		self.catalogPath = catalogPath
+	def __init__(self, catalog, cloudStorage):
+		self.catalog = catalog
 		self.cloudStorage = cloudStorage
-		self.catalogDb = CatalogDatabase(os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME))
+		self.catalogDb = self.catalog.catalogDb
 
 	def upload(self):
 		totalFileCount = self.catalogDb.getFileCount()
 		filesToUpload = self.catalogDb.getFilesNotInCloud()
 
+		
+		if not filesToUpload:
+			print(f'\nAll {totalFileCount} files have already been uploaded to the cloud.')
+			return
+
 		notUploadedPercentage = len(filesToUpload)/totalFileCount*100
 		print(f'\n{len(filesToUpload)}/{totalFileCount} ({notUploadedPercentage:.3f} %) files to be uploaded')
 
+		
 		for i, (checksum, filename, directory) in enumerate(filesToUpload, 1):
 			sourcePath = os.path.join(directory, filename)
 			objectName = os.path.join('file', checksum)
@@ -40,18 +45,15 @@ class CloudUploader(object):
 			self.catalogDb.commit()
 			self.catalogDb.printFileRecord(checksum)
 
-		self.catalogDb.close()
-
 
 if __name__=='__main__':
 	import argparse
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
-	parser.add_argument('--project', '-p', required=True, help='Cloud project ID')
-	parser.add_argument('--bucket', '-b', required=True, help='Cloud bucket name')
 	args = parser.parse_args()
 
-	cloudStorage = GoogleCloudStorage(args.project, args.bucket)
-	uploader = CloudUploader(args.catalog, cloudStorage)
-	uploader.upload()
+	with MediaCatalog(args.catalog) as catalog:
+		cloudStorage = GoogleCloudStorage(catalog.config['project'], catalog.config['defaultBucket'])
+		uploader = CloudUploader(catalog, cloudStorage)
+		uploader.upload()
 

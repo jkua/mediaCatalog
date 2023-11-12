@@ -3,6 +3,7 @@ import glob
 import logging
 import socket
 import json
+import yaml
 
 import jsonlines
 
@@ -11,54 +12,86 @@ from catalogDatabase import CatalogDatabase
 from utils import md5sum, sha256sum, getMetadata, getAcoustid
 
 
-class MediaCataloger(object):
-    METADATA_FOLDERNAME = 'metadata'
+class MediaCatalog(object):
+    CONFIG_FILENAME = 'config.yaml'
     CATALOG_DB_FILENAME = 'catalog.db'
+    METADATA_FOLDERNAME = 'metadata'
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
     MEDIA_EXTENSIONS = ['cr2', 'cr3', 'jpg', 'jpeg', 'heif', 'mov', 'mp4', 'mp3', 'm4a']
     CHECKSUM_MODE = 'SHA256'
 
-    def __init__(self, catalogPath, updateMode=False):
+    def __init__(self, catalogPath, create=False, update=False):
         self.catalogPath = catalogPath
+        self.createMode = create
+        self.updateMode = update
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
         self.metadataCatalogPath = os.path.join(self.catalogPath, self.METADATA_FOLDERNAME)
         self.hashChunkSize = 1024*1024*16
         self.hashDict = {}
+        self.config = None
         self.catalogDb = None
         self.metadataCatalog = None
         self.checksumKey = f'File:{self.CHECKSUM_MODE}Sum'
-        self.updateMode = updateMode
 
         self.open()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+        
     def open(self):
+        print(f'Opening catalog at {self.catalogPath}')
         if not os.path.exists(self.catalogPath):
-            logging.info(f'No catalog at {self.catalogPath} - creating catalog')
-            self.createCatalog()
+            if self.createMode:
+                logging.info(f'No catalog at {self.catalogPath} - creating catalog')
+                self._createCatalog()
+            else:
+                raise RuntimeError(f'No catalog at {self.catalogPath}! May create with -n!')
         else:
-            self.loadCatalog()
+            self._loadCatalog()
 
     def close(self):
+        self.catalogDb.commit()
         self.catalogDb.close()
+        self.catalogDb = None
 
-    def createCatalog(self):
+    def _loadConfig(self):
+        configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
+        try:
+            with open(configPath, 'r') as f:
+                self.config = yaml.safe_load(f)
+        except FileNotFoundError as e:
+            if self.createMode:
+                self.createConfig(configPath)
+            else:
+                raise FileNotFoundError('Could not load config file at: {configPath}! Broken catalog!')
+
+    def _createConfig(self, configPath):
+        self.config = {'project': '', 'defaultBucket': ''}
+        with open(configPath, 'w') as f:
+            yaml.dump(self.config)
+
+    def _createCatalog(self):
         # Create the catalog folder
         os.mkdir(self.catalogPath)
+
+        self._createConfig()
 
         # Create the metadata folder - subfolders are two character segments of the md5sum
         os.mkdir(self.metadataCatalogPath)
         self.catalogDb = CatalogDatabase(self.catalogDbPath)
         self.metadataCatalog = MetadataCatalogHDT(self.metadataCatalogPath, self.CHECKSUM_MODE)
 
-    def loadCatalog(self):
-        if not os.path.exists(self.metadataCatalogPath):
-            raise Exception('Missing metadata folder!')
+    def _loadCatalog(self):
+        self._loadConfig()
 
         self.catalogDb = CatalogDatabase(self.catalogDbPath)
         self.metadataCatalog = MetadataCatalogHDT(self.metadataCatalogPath, self.CHECKSUM_MODE)
 
-    def loadHashTable(self):
+    def _loadHashTable(self):
         with jsonlines.open(self.hashFilePath) as reader:
             for obj in reader:
                 self.hashDict[obj['hash']] = obj
@@ -112,6 +145,9 @@ class MediaCataloger(object):
                     self.catalogDb.printFileRecord(md[self.checksumKey])
 
             self.catalogDb.commit()
+
+    def checksum(self, filename: str) -> str:
+        return self._checksum(filename, self.CHECKSUM_MODE)
 
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)

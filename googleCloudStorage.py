@@ -7,10 +7,15 @@ import google_crc32c
 from cloudStorage import CloudStorage
 
 class GoogleCloudStorage(CloudStorage):
-    def __init__(self, projectId=None, bucketName=None):
-        CloudStorage.__init__(self, bucketName)
+    def __init__(self, projectId, bucketName):
+        if not projectId.strip():
+            raise Exception('projectId is not set!')
         self.projectId = projectId
+        CloudStorage.__init__(self, bucketName)
+        
         self.storageClient = storage.Client(project=projectId)
+
+        print(f'Initializing Google Cloud client with project {self.projectId} and bucket {self.bucketName}')
 
     def listBuckets(self):
         buckets = self.storageClient.list_buckets()
