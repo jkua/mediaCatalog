@@ -43,12 +43,11 @@ class MediaCatalog(object):
         
     def open(self):
         print(f'Opening catalog at {self.catalogPath}')
-        if not os.path.exists(self.catalogPath):
-            if self.createMode:
-                logging.info(f'No catalog at {self.catalogPath} - creating catalog')
-                self._createCatalog()
-            else:
-                raise RuntimeError(f'No catalog at {self.catalogPath}! May create with -n!')
+        if self.createMode:
+            self._createCatalog()
+            self.createMode = False
+        elif not os.path.exists(self.catalogPath):
+            raise RuntimeError(f'No catalog at {self.catalogPath}! May create with -n!')
         else:
             self._loadCatalog()
 
@@ -62,10 +61,7 @@ class MediaCatalog(object):
             with open(self.configPath, 'r') as f:
                 self.config = yaml.safe_load(f)
         except FileNotFoundError as e:
-            if self.createMode:
-                self._createConfig()
-            else:
-                raise FileNotFoundError('Could not load config file at: {self.configPath}! Broken catalog!')
+            raise FileNotFoundError('Could not load config file at: {self.configPath}! Broken catalog!')
 
     def _createConfig(self):
         self.config = {'project': '', 'defaultBucket': ''}
@@ -74,7 +70,10 @@ class MediaCatalog(object):
 
     def _createCatalog(self):
         # Create the catalog folder
-        os.mkdir(self.catalogPath)
+        try:
+            os.mkdir(self.catalogPath)
+        except FileExistsError as e:
+            raise FileExistsError(f'Catalog already exists at {self.catalogPath}!')
 
         self._createConfig()
 
