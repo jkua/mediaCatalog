@@ -7,7 +7,7 @@ import jsonlines
 
 from .metadataCatalogHDT import MetadataCatalogHDT
 from .catalogDatabase import CatalogDatabase
-from .utils import md5sum, sha256sum, getMetadata, getAcoustid
+from .utils import md5sum, sha256sum, getMimeTypes, getMetadata, getAcoustid
 
 
 class MediaCatalog(object):
@@ -15,7 +15,7 @@ class MediaCatalog(object):
     CATALOG_DB_FILENAME = 'catalog.db'
     METADATA_FOLDERNAME = 'metadata'
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
-    MEDIA_EXTENSIONS = ['cr2', 'cr3', 'heif', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'avi', 'mov', 'mp4', 'wmv', 'm4a', 'mp3', 'wav', 'thm', 'txt']
+    MEDIA_MIME_TYPES = ['image', 'video', 'audio', 'text']
     CHECKSUM_MODE = 'SHA256'
 
     def __init__(self, catalogPath, create=False, update=False, verbose=False):
@@ -101,24 +101,25 @@ class MediaCatalog(object):
         failedFiles = []
         hostname = socket.gethostname()
         for dirName, subdirList, fileList in os.walk(path):
+            subdirList.sort()
             print(f'\nProcessing directory: {dirName}')
+            if not fileList:
+                continue
             filesToProcess = []
-            for fname in sorted(fileList):
-                head, ext = os.path.splitext(fname)
-                if len(ext) > 1:
-                    ext = ext[1:].lower()
-                    filePath = os.path.join(dirName, fname)
-                    if ext in self.MEDIA_EXTENSIONS:
-                        checksum = self._checksum(filePath, self.CHECKSUM_MODE)
-                        # TODO Extend the database check to also look for same capture device and filename/time in case of corruption
-                        if self.updateMode or not self.catalogDb.exists(checksum):
-                            filesToProcess.append((filePath, checksum))
-                        else:
-                            skippedFiles.append((filePath, checksum))
-                            logging.warning(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
+            fullFilePaths = [os.path.join(dirName, fname) for fname in fileList]
+            mimeTypes = getMimeTypes(fullFilePaths)
+            for filePath, mimeType in sorted(zip(fullFilePaths, mimeTypes)):
+                if mimeType and mimeType.split('/')[0] in self.MEDIA_MIME_TYPES:
+                    checksum = self._checksum(filePath, self.CHECKSUM_MODE)
+                    # TODO Extend the database check to also look for same capture device and filename/time in case of corruption
+                    if self.updateMode or not self.catalogDb.exists(checksum):
+                        filesToProcess.append((filePath, checksum))
                     else:
-                        skippedFiles.append((filePath, None))
-                        logging.warning(f'Skipping non-media file: {fname}')
+                        skippedFiles.append((filePath, checksum))
+                        logging.warning(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
+                else:
+                    skippedFiles.append((filePath, None))
+                    logging.warning(f'Skipping non-media/corrupt file: {filePath} ({mimeType})')
 
             if not filesToProcess:
                 continue

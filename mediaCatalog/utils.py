@@ -5,6 +5,22 @@ import exiftool
 import acoustid
 
 
+def getMimeTypes(filenames: list) -> list:
+    with exiftool.ExifToolHelper() as et:
+        try:
+            tags = et.get_tags(filenames, tags=['File:MIMEType'])
+            mimeTypes = [tag['File:MIMEType'] for tag in tags]
+        except Exception as e:
+            mimeTypes = []
+            for file in filenames:
+                try:
+                    tag = et.get_tags(file, tags=['File:MIMEType'])[0]
+                    mimeTypes.append(tag['File:MIMEType'])
+                except:
+                    logging.warning(f'Failed to get MIME type for {file}')
+                    mimeTypes.append(None)
+    return mimeTypes
+
 def getMetadata(filenames: list) -> list:
     with exiftool.ExifToolHelper() as et:
         try:

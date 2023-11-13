@@ -243,8 +243,6 @@ class CatalogDatabase(object):
             tokens.append('host_name = ?')
             values.append(hostname)
         command += 'WHERE ' + ' AND '.join(tokens)
-        print(command)
-        print(values)
         self.cursor.execute(command, values)
 
         records = self.cursor.fetchall()
