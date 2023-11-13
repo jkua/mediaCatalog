@@ -115,10 +115,10 @@ class MediaCatalog(object):
                     if self.updateMode or not self.catalogDb.exists(checksum):
                         filesToProcess.append((filePath, checksum))
                     else:
-                        skippedFiles.append((filePath, checksum))
+                        skippedFiles.append((filePath, mimeType, checksum))
                         logging.warning(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
                 else:
-                    skippedFiles.append((filePath, None))
+                    skippedFiles.append((filePath, mimeType, None))
                     logging.warning(f'Skipping non-media/corrupt file: {filePath} ({mimeType})')
 
             if not filesToProcess:
@@ -166,15 +166,23 @@ class MediaCatalog(object):
             self.catalogDb.commit()
 
         numProcessedFiles = len(newFiles) + len(updatedFiles) + len(skippedFiles) + len(failedFiles)
-        print(f'\nCataloging complete! Files processed: {numProcessedFiles}')
+        print(f'\nCataloging complete!')
+        print('====================')
+        print(f'Files processed: {numProcessedFiles}')
         print(f'New files: {len(newFiles)}')
         print(f'Updated files: {len(updatedFiles)}')
         print(f'Skipped files: {len(skippedFiles)}')
-        for file, checksum in skippedFiles:
-            print(f'    {file} -> {checksum}')
+        for file, mimeType, checksum in skippedFiles:
+            if checksum:
+                print(f'    {file} -> already in catalog: {checksum}')
+            elif mimeType:
+                print(f'    {file} -> not media - type: {mimeType}')
+            else:
+                print(f'    {file} -> unable to determine file type')
+
         print(f'Failed files: {len(failedFiles)}')
         for file, checksum in failedFiles:
-            print(f'    {file} -> {checksum}')
+            print(f'    {file} -> unable to read metadata!')
 
     def query(self, checksum=None, filename=None, directory=None, hostname=None):
         dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)

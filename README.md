@@ -9,7 +9,7 @@
 `pytest tests`
 
 ## Operation
-### Add files to catalog (first time add -n to create a new catalog)
+### Add files to catalog (first time add `-n` to create a new catalog)
 `./catalog.py -c <catalog path> -p <path to process>`
 
 ### Query catalog (add `-m` flag to display metadata)
