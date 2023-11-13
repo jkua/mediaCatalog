@@ -15,13 +15,14 @@ class MediaCatalog(object):
     CATALOG_DB_FILENAME = 'catalog.db'
     METADATA_FOLDERNAME = 'metadata'
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
-    MEDIA_EXTENSIONS = ['cr2', 'cr3', 'jpg', 'jpeg', 'heif', 'mov', 'mp4', 'mp3', 'm4a']
+    MEDIA_EXTENSIONS = ['cr2', 'cr3', 'heif', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'avi', 'mov', 'mp4', 'wmv', 'm4a', 'mp3', 'wav', 'thm', 'txt']
     CHECKSUM_MODE = 'SHA256'
 
-    def __init__(self, catalogPath, create=False, update=False):
+    def __init__(self, catalogPath, create=False, update=False, verbose=False):
         self.catalogPath = catalogPath
         self.createMode = create
         self.updateMode = update
+        self.verbose = verbose
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
         self.configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
@@ -94,63 +95,89 @@ class MediaCatalog(object):
                 self.hashDict[obj['hash']] = obj
 
     def catalog(self, path):
+        newFiles = []
+        updatedFiles = []
+        skippedFiles = []
+        failedFiles = []
         hostname = socket.gethostname()
         for dirName, subdirList, fileList in os.walk(path):
-            print('Found directory: %s' % dirName)
+            print(f'\nProcessing directory: {dirName}')
             filesToProcess = []
             for fname in sorted(fileList):
                 head, ext = os.path.splitext(fname)
                 if len(ext) > 1:
                     ext = ext[1:].lower()
+                    filePath = os.path.join(dirName, fname)
                     if ext in self.MEDIA_EXTENSIONS:
-                        filePath = os.path.join(dirName, fname)
                         checksum = self._checksum(filePath, self.CHECKSUM_MODE)
                         # TODO Extend the database check to also look for same capture device and filename/time in case of corruption
                         if self.updateMode or not self.catalogDb.exists(checksum):
                             filesToProcess.append((filePath, checksum))
                         else:
-                            print(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
+                            skippedFiles.append((filePath, checksum))
+                            logging.warning(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
                     else:
-                        print(f'WARNING: Ignoring non-media file: {fname}')
+                        skippedFiles.append((filePath, None))
+                        logging.warning(f'Skipping non-media file: {fname}')
 
             if not filesToProcess:
                 continue
 
             files, checksums = zip(*filesToProcess)
             if len(filesToProcess) > 0:
-                print('Extracting metadata')
-                metadata = self._getMetadata(files)
+                metadata = self._getMetadata(files)        
 
                 for file, md, checksum in zip(files, metadata, checksums):
-                    # TODO This probably needs to be more robust to the range of bad files
-                    # And should this be here or upstream in the filesToProcess generation?
-                    if md['File:FileSize'] == 0:
-                        raise Exception('File size is zero!')
-                    md['HostName'] = hostname
+                    if md is None:
+                        failedFiles.append((file, checksum))
+                        continue
+                    try:
+                        md['HostName'] = hostname
+                    except:
+                        import pdb; pdb.set_trace()
                     
                     md[self.checksumKey] = checksum
-                    print(f'\n{file} -> {checksum}')
+                    print(f'{file} -> {checksum}')
+
+                    if self.catalogDb.exists(checksum):
+                        updatedFiles.append((file, checksum))
+                        logging.info('File already in catalog! Updating!')
+                    else:
+                        newFiles.append((file, checksum))
 
                     if md['File:MIMEType'].startswith('audio'):
-                        md['Acoustid:MatchResults'] = getAcoustid(file)
+                        logging.warning('Audio fingerprinting disabled!')
+                        # md['Acoustid:MatchResults'] = getAcoustid(file)
 
                     metadataPath = self.metadataCatalog.write(md, self.updateMode)
                     self.catalogDb.write(md, self.updateMode)
 
                     # Readback test - TODO Move this to a test case
-                    md_readback = self.metadataCatalog.read(md[self.checksumKey])
-                    for key, value in md.items():
-                        if value != md_readback[key]:
-                            print(f'Mismatch for [{key}]: ({value} != {md_readback[key]}')
-                    # assert md_readback == md
+                    md_readback, _ = self.metadataCatalog.read(md[self.checksumKey], 
+                                                    filename=md['File:FileName'],
+                                                    directory=md['File:Directory'],
+                                                    hostname=md['HostName'])
+                    assert self._compareMetadata(md, md_readback)
 
-                    self.catalogDb.printFileRecord(md[self.checksumKey])
+                    if self.verbose:
+                        self.catalogDb.printFileRecord(md[self.checksumKey])
 
             self.catalogDb.commit()
 
+        numProcessedFiles = len(newFiles) + len(updatedFiles) + len(skippedFiles) + len(failedFiles)
+        print(f'\nCataloging complete! Files processed: {numProcessedFiles}')
+        print(f'New files: {len(newFiles)}')
+        print(f'Updated files: {len(updatedFiles)}')
+        print(f'Skipped files: {len(skippedFiles)}')
+        for file, checksum in skippedFiles:
+            print(f'    {file} -> {checksum}')
+        print(f'Failed files: {len(failedFiles)}')
+        for file, checksum in failedFiles:
+            print(f'    {file} -> {checksum}')
+
     def query(self, checksum):
         dbRecord = self.catalogDb.read(checksum)
-        metadata = self.metadataCatalog.read(checksum)
+        metadata, _ = self.metadataCatalog.read(checksum)
         return dbRecord, metadata
 
     def checksum(self, filename: str) -> str:
@@ -158,6 +185,19 @@ class MediaCatalog(object):
 
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)
+    
+    def _compareMetadata(self, metadata1: dict, metadata2: dict) -> bool:
+        if len(metadata1.keys()) != len(metadata2.keys()):
+            print('Different number of keys!')
+            return False
+        for key, value in metadata1.items():
+            if key == 'File:FileAccessDate':
+                continue
+            if value != metadata2[key]:
+                print(f'Mismatch for [{key}]: ({value} != {metadata2[key]}')
+                return False
+            
+        return True
 
     def _checksum(self, filename: str, mode: str) -> str:
         if mode == 'MD5':

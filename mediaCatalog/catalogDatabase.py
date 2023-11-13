@@ -121,7 +121,8 @@ class CatalogDatabase(object):
         self.cursor.execute(
             '''CREATE TABLE file
                 (
-                    checksum BLOB PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    checksum BLOB NOT NULL,
                     file_name TEXT NOT NULL,
                     directory TEXT NULL,
                     host_id INTEGER NULL,
@@ -135,7 +136,8 @@ class CatalogDatabase(object):
                     FOREIGN KEY(host_id) REFERENCES host(id) ON DELETE SET NULL,
                     FOREIGN KEY(file_mime_type_id) REFERENCES mime_type(id) ON DELETE SET NULL,
                     FOREIGN KEY(capture_device_id) REFERENCES capture_device(id) ON DELETE SET NULL,
-                    FOREIGN KEY(cloud_storage_id) REFERENCES cloud_storage(id) ON DELETE SET NULL
+                    FOREIGN KEY(cloud_storage_id) REFERENCES cloud_storage(id) ON DELETE SET NULL,
+                    UNIQUE(file_name, directory, host_id)
                 )
             '''
             )        
@@ -177,11 +179,8 @@ class CatalogDatabase(object):
                 )
 
         if updateMode:
-            command += ''' ON CONFLICT(checksum) DO UPDATE
-                        SET file_name = ?,
-                            directory = ?,
-                            host_id = ?, 
-                            file_size = ?, 
+            command += ''' ON CONFLICT(file_name, directory, host_id) DO UPDATE
+                        SET file_size = ?, 
                             file_modify_datetime = ?,
                             file_mime_type_id = ?,
                             capture_device_id = ?,
@@ -190,9 +189,6 @@ class CatalogDatabase(object):
                             checksum = ?
                 '''
             values += (
-                        metadata['File:FileName'],
-                        metadata['File:Directory'],
-                        hostId,
                         metadata['File:FileSize'],
                         metadata['File:FileModifyDate'],
                         mimeTypeId,
@@ -235,9 +231,9 @@ class CatalogDatabase(object):
         if len(records) == 0:
             raise KeyError(f'Checksum {checksum} not found in database!')
         elif len(records) > 1:
-            print(f'WARNING: Multiple ({len(records)}) entries with checksum {checksum} in database! Returning first!')
+            logging.warning(f'Multiple ({len(records)}) entries with checksum {checksum} in database!')
 
-        return records[0]
+        return records
 
     def exists(self, checksum):
         self.cursor.execute(

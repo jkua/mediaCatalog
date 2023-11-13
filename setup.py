@@ -17,7 +17,8 @@ setup(
         'scripts/catalog.py', 
         'scripts/queryCatalog.py', 
         'scripts/cloudUpload.py', 
-        'scripts/cloudDownload.py'
+        'scripts/cloudDownload.py',
+        'scripts/getMetadata.py'
     ],
     author='John Kua',
     author_email='john@kua.fm',

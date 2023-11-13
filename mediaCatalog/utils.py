@@ -1,5 +1,5 @@
 import hashlib
-import re
+import logging
 
 import exiftool
 import acoustid
@@ -10,7 +10,13 @@ def getMetadata(filenames: list) -> list:
         try:
             metadata = et.get_metadata(filenames)
         except Exception as e:
-            raise Exception('Failed to get metadata from file(s)')
+            metadata = []
+            for file in filenames:
+                try:
+                    metadata.append(et.get_metadata(file)[0])
+                except:
+                    logging.warning(f'Failed to get metadata for {file}')
+                    metadata.append(None)
     return metadata
 
 
