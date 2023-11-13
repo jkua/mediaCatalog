@@ -175,10 +175,16 @@ class MediaCatalog(object):
         for file, checksum in failedFiles:
             print(f'    {file} -> {checksum}')
 
-    def query(self, checksum):
-        dbRecord = self.catalogDb.read(checksum)
-        metadata, _ = self.metadataCatalog.read(checksum)
-        return dbRecord, metadata
+    def query(self, checksum=None, filename=None, directory=None, hostname=None):
+        dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)
+        if checksum is not None:
+            metadataAndPaths = self.metadataCatalog.read(checksum, filename=filename, directory=directory, hostname=hostname, all=True)
+        else:
+            metadataAndPaths = []
+            for record in dbRecords:
+                currentMetadataAndPaths = self.metadataCatalog.read(record['checksum'], filename=filename, directory=directory, hostname=hostname, all=True)
+                metadataAndPaths.extend(currentMetadataAndPaths)
+        return dbRecords, metadataAndPaths
 
     def checksum(self, filename: str) -> str:
         return self._checksum(filename, self.CHECKSUM_MODE)

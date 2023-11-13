@@ -1,5 +1,6 @@
 import sqlite3
 from packaging.version import Version
+import logging
 
 from .utils import getPreciseCaptureTimeFromExif
 
@@ -202,36 +203,64 @@ class CatalogDatabase(object):
             if not updateMode:
                 print(f'WARNING: File already in database! Ignoring.')
 
-    def read(self, checksum):
-        self.cursor.execute(
-            '''SELECT checksum,
-                    file_name,
-                    directory,
-                    host.name as host_name,
-                    file_size,
-                    file_modify_datetime,
-                    mime_type.type as file_mime_type,
-                    capture_device.make as capture_device_make,
-                    capture_device.model as capture_device_model,
-                    capture_device.serial_number as capture_device_serial_number,
-                    capture_datetime,
-                    cloud_storage.name as cloud_name,
-                    cloud_storage.bucket as cloud_bucket,
-                    cloud_object_name
-                FROM file
-                LEFT JOIN host on file.host_id = host.id
-                LEFT JOIN mime_type on file.file_mime_type_id = mime_type.id
-                LEFT JOIN capture_device on file.capture_device_id = capture_device.id
-                LEFT JOIN cloud_storage on file.cloud_storage_id = cloud_storage.id
-                WHERE checksum = ?
-            ''',
-            (checksum,)
-        )
+    def read(self, checksum=None, filename=None, directory=None, hostname=None):
+        if checksum is None and filename is None and directory is None and hostname is None:
+            raise Exception('Must supply at least one of checksum, filename, directory, or hostname!')
+
+        command = '''SELECT file.id,
+                        checksum,
+                        file_name,
+                        directory,
+                        host.name as host_name,
+                        file_size,
+                        file_modify_datetime,
+                        mime_type.type as file_mime_type,
+                        capture_device.make as capture_device_make,
+                        capture_device.model as capture_device_model,
+                        capture_device.serial_number as capture_device_serial_number,
+                        capture_datetime,
+                        cloud_storage.name as cloud_name,
+                        cloud_storage.bucket as cloud_bucket,
+                        cloud_object_name
+                    FROM file
+                    LEFT JOIN host on file.host_id = host.id
+                    LEFT JOIN mime_type on file.file_mime_type_id = mime_type.id
+                    LEFT JOIN capture_device on file.capture_device_id = capture_device.id
+                    LEFT JOIN cloud_storage on file.cloud_storage_id = cloud_storage.id
+                '''
+        tokens = []
+        values = []
+        if checksum is not None:
+            tokens.append('checksum = ?')
+            values.append(checksum)
+        if filename is not None:
+            tokens.append('file_name = ?')
+            values.append(filename)
+        if directory is not None:
+            tokens.append('directory = ?')
+            values.append(directory)
+        if hostname is not None:
+            tokens.append('host_name = ?')
+            values.append(hostname)
+        command += 'WHERE ' + ' AND '.join(tokens)
+        print(command)
+        print(values)
+        self.cursor.execute(command, values)
+
         records = self.cursor.fetchall()
         if len(records) == 0:
-            raise KeyError(f'Checksum {checksum} not found in database!')
-        elif len(records) > 1:
-            logging.warning(f'Multiple ({len(records)}) entries with checksum {checksum} in database!')
+            errorMessage = 'File not found in database with '
+            tokens = []
+            if checksum is not None:
+                tokens.append(f'checksum: {checksum}')
+            if filename is not None:
+                tokens.append(f'filename: {filename}')
+            if directory is not None:
+                tokens.append(f'directory: {directory}')
+            if hostname is not None:
+                tokens.append(f'hostname: {hostname}')
+            errorMessage += ', '.join(tokens) + ' !'
+            raise KeyError(errorMessage)
 
         return records
 
