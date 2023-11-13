@@ -69,8 +69,7 @@ if __name__=='__main__':
 					metadata['File:Directory'] == record['directory'] and \
 					metadata['HostName'] == record['host_name']:
 						
-					metadata, metadataPath = metadataAndPaths[0]
-					print(f'\n    Metadata ')
+					print(f'\n    Metadata - Path: {metadataPath} ')
 					print('    --------')
 					for key, value in metadata.items():
 						print(f'    {key}: {value}')

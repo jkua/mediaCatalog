@@ -183,7 +183,7 @@ class MediaCatalog(object):
         else:
             metadataAndPaths = []
             for record in dbRecords:
-                currentMetadataAndPaths = self.metadataCatalog.read(record['checksum'], filename=filename, directory=directory, hostname=hostname, all=True)
+                currentMetadataAndPaths = self.metadataCatalog.read(record['checksum'], filename=record['file_name'], directory=record['directory'], hostname=hostname, all=True)
                 metadataAndPaths.extend(currentMetadataAndPaths)
         return dbRecords, metadataAndPaths
 
