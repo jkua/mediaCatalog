@@ -1,6 +1,8 @@
+pytest
 pyyaml
 jsonlines
 pyexiftool
 pyacoustid
 packaging
 google-cloud-storage
+google-crc32c
