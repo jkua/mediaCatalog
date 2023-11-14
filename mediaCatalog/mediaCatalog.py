@@ -17,6 +17,7 @@ class MediaCatalog(object):
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
     MEDIA_MIME_TYPES = ['image', 'video', 'audio', 'text']
     CHECKSUM_MODE = 'SHA256'
+    DEFAULT_CLOUD_OBJECT_PREFIX = 'file'
 
     def __init__(self, catalogPath, create=False, update=False, verbose=False):
         self.catalogPath = catalogPath
@@ -65,7 +66,7 @@ class MediaCatalog(object):
             raise FileNotFoundError('Could not load config file at: {self.configPath}! Broken catalog!')
 
     def _createConfig(self):
-        self.config = {'project': '', 'defaultBucket': ''}
+        self.config = {'project': '', 'defaultBucket': '', 'cloudObjectPrefix': self.DEFAULT_CLOUD_OBJECT_PREFIX}
         with open(self.configPath, 'w') as f:
             yaml.dump(self.config, f)
 

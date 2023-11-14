@@ -35,13 +35,13 @@ class TestMediaCatalog:
     def test_create_config(self, new_catalog):
         new_catalog._createConfig()
         assert os.path.exists(new_catalog.configPath)
-        assert new_catalog.config == {'project': '', 'defaultBucket': ''}
+        assert new_catalog.config == {'project': '', 'defaultBucket': '', 'cloudObjectPrefix': 'file'}
         assert new_catalog.config == yaml.safe_load(open(new_catalog.configPath, 'r'))
 
     def test_load_config(self, new_catalog):
         new_catalog._createConfig()
         new_catalog._loadConfig()
-        assert new_catalog.config == {'project': '', 'defaultBucket': ''}
+        assert new_catalog.config == {'project': '', 'defaultBucket': '', 'cloudObjectPrefix': 'file'}
 
     def test_create_catalog(self, new_catalog):
         assert os.path.exists(new_catalog.catalogPath)

@@ -204,8 +204,8 @@ class CatalogDatabase(object):
             if not updateMode:
                 print(f'WARNING: File already in database! Ignoring.')
 
-    def read(self, checksum=None, filename=None, directory=None, hostname=None):
-        if checksum is None and filename is None and directory is None and hostname is None:
+    def read(self, checksum=None, filename=None, directory=None, hostname=None, all=False):
+        if not all and checksum is None and filename is None and directory is None and hostname is None:
             raise Exception('Must supply at least one of checksum, filename, directory, or hostname!')
 
         command = '''SELECT file.id,
@@ -246,11 +246,14 @@ class CatalogDatabase(object):
         if hostname is not None:
             tokens.append('host_name = ?')
             values.append(hostname)
-        command += 'WHERE ' + ' AND '.join(tokens)
+        if not all:
+            command += 'WHERE ' + ' AND '.join(tokens)
+        else:
+            values = []
         self.cursor.execute(command, values)
 
         records = self.cursor.fetchall()
-        if len(records) == 0:
+        if len(records) == 0 and not all:
             errorMessage = 'File not found in database with '
             tokens = []
             if checksum is not None:

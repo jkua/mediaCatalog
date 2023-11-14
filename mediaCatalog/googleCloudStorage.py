@@ -33,10 +33,11 @@ class GoogleCloudStorage(CloudStorage):
         # self.bucket = self.storageClient.bucket(bucketName)
 
     def listFiles(self, prefix=None, delimiter=None):
-        self._listFiles(self.bucketName, prefix=prefix, delimiter=delimiter)
+        return self._listFiles(self.bucketName, prefix=prefix, delimiter=delimiter)
 
     def _listFiles(self, bucketName, prefix=None, delimiter=None):
-        return self.storageClient.list_blobs(bucketName, prefix=prefix, delimiter=delimiter)
+        blobs = self.storageClient.list_blobs(bucketName, prefix=prefix, delimiter=delimiter)
+        return [blob.name for blob in blobs]
 
     def _fileExists(self, bucketName, objectName):
         bucket = self.storageClient.bucket(bucketName)
@@ -70,6 +71,12 @@ class GoogleCloudStorage(CloudStorage):
         generationMatchPrecondition = blob.generation
 
         blob.delete(if_generation_match=generationMatchPrecondition)
+
+    def _getMimeType(self, bucketName, objectName):
+        bucket = self.storageClient.bucket(bucketName)
+        blob = bucket.blob(objectName)
+        blob.reload()
+        return blob.content_type
 
     def _computeCrc32c(self, sourcePath):
         helper = google_crc32c.Checksum()

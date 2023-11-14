@@ -34,6 +34,9 @@ class CloudStorage(object):
     def deleteFile(self, objectName):
         self._deleteFile(self.bucketName, objectName)
 
+    def getMimeType(self, objectName):
+        return self._getMimeType(self.bucketName, objectName)
+
     def _listFiles(self, bucketName, prefix=None):
         raise NotImplementedError
 
@@ -49,3 +52,5 @@ class CloudStorage(object):
     def _deleteFile(self, bucketName, objectName):
         raise NotImplementedError
 
+    def _getMimeType(self, bucketName, objectName):
+        raise NotImplementedError

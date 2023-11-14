@@ -6,7 +6,10 @@
 3. `pip3 install -e .`
 
 ### Run tests
-`pytest tests`
+1. Create `config.yaml` in `tests/` with your *test values* for cloud storage: `project, `defaultBucket`, `cloudObjectPrefix`
+    1. `defaultBucket` should *NOT* be your production bucket
+    2. `cloudObjectPrefix` should *NOT* be your production value (typically `file`)
+2. `pytest tests`
 
 ## Operation
 ### Add files to catalog (first time add `-n` to create a new catalog)

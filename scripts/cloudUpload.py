@@ -1,60 +1,10 @@
 #!/usr/bin/env python3
 
 import logging
-import os
 
 from mediaCatalog.mediaCatalog import MediaCatalog
 from mediaCatalog.googleCloudStorage import GoogleCloudStorage
-
-class CloudUploader(object):
-	def __init__(self, catalog, cloudStorage):
-		self.catalog = catalog
-		self.cloudStorage = cloudStorage
-		self.catalogDb = self.catalog.catalogDb
-
-	def upload(self):
-		totalFileCount = self.catalogDb.getFileCount()
-		filesToUpload = self.catalogDb.getFilesNotInCloud()
-
-		
-		if not filesToUpload:
-			print(f'\nAll {totalFileCount} files have already been uploaded to the cloud.')
-			return
-
-		notUploadedPercentage = len(filesToUpload)/totalFileCount*100
-		print(f'\n{len(filesToUpload)}/{totalFileCount} ({notUploadedPercentage:.3f} %) files to be uploaded')
-
-		uploadedFiles = []
-		skippedFiles = []
-		for i, (checksum, filename, directory, mimeType) in enumerate(filesToUpload, 1):
-			sourcePath = os.path.join(directory, filename)
-			objectName = os.path.join('file', checksum)
-
-			uploadedPercentage = i/len(filesToUpload)*100
-			print(f'[{i}/{len(filesToUpload)} ({uploadedPercentage:.3f} %)] {sourcePath} -> {objectName}')
-			
-			if not cloudStorage.fileExists(objectName):
-				self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
-				uploadedFiles.append((sourcePath, objectName))
-			else:
-				print('    WARNING: Object already exists in the cloud!')
-				if cloudStorage.validateFile(objectName, sourcePath):
-					print('    Checksums match. Skipping upload.')
-					skippedFiles.append((sourcePath, objectName))
-				else:
-					skippedFiles.append((sourcePath, None))
-					raise Exception('Cloud object has a different checksum!')
-			
-			self.catalogDb.setCloudStorage(checksum, self.cloudStorage.projectId, self.cloudStorage.bucketName, objectName)
-			self.catalogDb.commit()
-			# self.catalogDb.printFileRecord(checksum)
-
-		numProcessedFiles = len(uploadedFiles) + len(skippedFiles)
-		print(f'\nUpload complete!')
-		print('====================')
-		print(f'Files processed: {numProcessedFiles}')
-		print(f'Uploaded files: {len(uploadedFiles)}')
-		print(f'Skipped files: {len(skippedFiles)}')
+from mediaCatalog.cloudUploader import CloudUploader
 
 
 if __name__=='__main__':
@@ -63,8 +13,9 @@ if __name__=='__main__':
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
 	args = parser.parse_args()
 
+	logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
+
 	with MediaCatalog(args.catalog) as catalog:
 		cloudStorage = GoogleCloudStorage(catalog.config['project'], catalog.config['defaultBucket'])
 		uploader = CloudUploader(catalog, cloudStorage)
 		uploader.upload()
-
