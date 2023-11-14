@@ -3,7 +3,7 @@
 import logging
 import os
 
-from mediaCatalog import MediaCatalog
+from mediaCatalog.mediaCatalog import MediaCatalog
 from mediaCatalog.googleCloudStorage import GoogleCloudStorage
 
 class CloudUploader(object):
@@ -24,7 +24,8 @@ class CloudUploader(object):
 		notUploadedPercentage = len(filesToUpload)/totalFileCount*100
 		print(f'\n{len(filesToUpload)}/{totalFileCount} ({notUploadedPercentage:.3f} %) files to be uploaded')
 
-		
+		uploadedFiles = []
+		skippedFiles = []
 		for i, (checksum, filename, directory, mimeType) in enumerate(filesToUpload, 1):
 			sourcePath = os.path.join(directory, filename)
 			objectName = os.path.join('file', checksum)
@@ -34,16 +35,26 @@ class CloudUploader(object):
 			
 			if not cloudStorage.fileExists(objectName):
 				self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
+				uploadedFiles.append((sourcePath, objectName))
 			else:
 				print('    WARNING: Object already exists in the cloud!')
 				if cloudStorage.validateFile(objectName, sourcePath):
 					print('    Checksums match. Skipping upload.')
+					skippedFiles.append((sourcePath, objectName))
 				else:
+					skippedFiles.append((sourcePath, None))
 					raise Exception('Cloud object has a different checksum!')
 			
 			self.catalogDb.setCloudStorage(checksum, self.cloudStorage.projectId, self.cloudStorage.bucketName, objectName)
 			self.catalogDb.commit()
-			self.catalogDb.printFileRecord(checksum)
+			# self.catalogDb.printFileRecord(checksum)
+
+		numProcessedFiles = len(uploadedFiles) + len(skippedFiles)
+		print(f'\nUpload complete!')
+		print('====================')
+		print(f'Files processed: {numProcessedFiles}')
+		print(f'Uploaded files: {len(uploadedFiles)}')
+		print(f'Skipped files: {len(skippedFiles)}')
 
 
 if __name__=='__main__':

@@ -159,7 +159,7 @@ class MediaCatalog(object):
                         logging.warning('Audio fingerprinting disabled!')
                         # md['Acoustid:MatchResults'] = getAcoustid(file)
 
-                    metadataPath = self.metadataCatalog.write(md, self.updateMode)
+                    self.metadataCatalog.write(md, self.updateMode)
                     self.catalogDb.write(md, self.updateMode)
 
                     # Readback test - TODO Move this to a test case

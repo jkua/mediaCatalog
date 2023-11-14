@@ -4,7 +4,7 @@ import struct
 from google.cloud import storage
 import google_crc32c
 
-from cloudStorage import CloudStorage
+from .cloudStorage import CloudStorage
 
 class GoogleCloudStorage(CloudStorage):
     def __init__(self, projectId, bucketName):

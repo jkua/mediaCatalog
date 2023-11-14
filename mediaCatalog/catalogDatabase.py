@@ -425,7 +425,7 @@ class CatalogDatabase(object):
         return records
 
     def printFileRecord(self, checksum):
-        record = self.read(checksum)
+        record = self.read(checksum)[0]
         print('')
         for key, value in zip(record.keys(), record):
             print(f'{key}: {value}')
