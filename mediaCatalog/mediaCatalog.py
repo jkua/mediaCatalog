@@ -174,6 +174,11 @@ class MediaCatalog(object):
 
             self.catalogDb.commit()
 
+        self._printCatalogProcessResults(newFiles, updatedFiles, skippedFiles, failedFiles)
+
+        return newFiles, updatedFiles, skippedFiles, failedFiles
+    
+    def _printCatalogProcessResults(self, newFiles, updatedFiles, skippedFiles, failedFiles):
         numProcessedFiles = len(newFiles) + len(updatedFiles) + len(skippedFiles) + len(failedFiles)
         print(f'\nCataloging complete!')
         print('====================')
@@ -197,6 +202,9 @@ class MediaCatalog(object):
 
         if noUpdateFlag:
             print(f'\nSome files were skipped because they are already in the catalog. Use the -u flag to update them.')
+
+        return numProcessedFiles
+
 
     def query(self, checksum=None, filename=None, directory=None, hostname=None):
         dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)
