@@ -66,7 +66,7 @@ class MediaCatalog(object):
             raise FileNotFoundError('Could not load config file at: {self.configPath}! Broken catalog!')
 
     def _createConfig(self):
-        self.config = {'project': '', 'defaultBucket': '', 'cloudObjectPrefix': self.DEFAULT_CLOUD_OBJECT_PREFIX}
+        self.config = {'cloudProject': '', 'defaultCloudBucket': '', 'cloudObjectPrefix': self.DEFAULT_CLOUD_OBJECT_PREFIX}
         with open(self.configPath, 'w') as f:
             yaml.dump(self.config, f)
 
