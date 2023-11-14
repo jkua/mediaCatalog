@@ -2,11 +2,13 @@ import os
 import logging
 import socket
 import yaml
+from typing import Optional
 
 import jsonlines
 
 from .metadataCatalogHDT import MetadataCatalogHDT
 from .catalogDatabase import CatalogDatabase
+from .cloudStorage import CloudStorage
 from .utils import md5sum, sha256sum, getMimeTypes, getMetadata, getAcoustid
 
 
@@ -206,6 +208,82 @@ class MediaCatalog(object):
 
         return numProcessedFiles
 
+    def verify(self, 
+                path: Optional[str]=None, 
+                local: bool=False, 
+                cloudStorage: Optional[CloudStorage]=None, 
+                verifyChecksum: bool=False) -> bool:
+        ''' Verify the catalog against the local files and in the cloud. If path is specified, only verify files in that path and subpaths.
+        
+            :param path: (str) Only verify files in this path and subpaths
+            :param local: (bool) Verify local files
+            :param cloudStorage: CloudStorage object to use for cloud verification
+            :param verifyChecksum: (bool) Verify checksums of files
+            :returns: (bool) True if all files are found and optionally matches checksums, False otherwise
+        '''
+        if path:
+            records = self.catalogDb.read(directory=path.strip('/') + '*')
+        else:
+            records = self.catalogDb.read(all=True)
+        if not local and not cloudStorage:
+            raise ValueError('At least one of local or cloudStorage must be set!')
+
+        numFiles = len(records)
+        print(f'{numFiles} files in catalog')
+
+        foundLocalFiles = []
+        missingLocalFiles = []
+        changedLocalFiles = []
+        foundCloudFiles = []
+        missingCloudFiles = []
+        changedCloudFiles = []
+        
+        for record in records:
+            filePath = os.path.join(record['directory'], record['file_name'])
+            if local:
+                if os.path.exists(filePath):
+                    if verifyChecksum:
+                        checksum = self._checksum(filePath, self.CHECKSUM_MODE)
+                        if checksum == record['checksum']:
+                            foundLocalFiles.append(record)
+                        else:
+                            changedLocalFiles.append(record)
+                            print(f'[WARNING] Local file changed: {filePath}')
+                    else:
+                        foundLocalFiles.append(record)
+                else:
+                    missingLocalFiles.append(record)
+                    print(f'Local file not found: {filePath}')
+            if cloudStorage:
+                if cloudStorage.fileExists(record['cloud_object_name']):
+                    if verifyChecksum:
+                        if cloudStorage.validateFile(record['cloud_object_name'], checksum=record['cloud_object_checksum']):
+                            foundCloudFiles.append(record)
+                        else:
+                            changedCloudFiles.append(record)
+                            print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({filePath})')
+                    else:
+                        foundCloudFiles.append(record)
+                else:
+                    missingCloudFiles.append(record)
+                    print(f'Cloud file not found: {record["cloud_object_name"]} ({filePath})')
+
+        print('\nVerification complete!')
+        print('======================')
+        if path:
+            print(f'*** For path: {path} ***')
+        print(f'Files in catalog: {numFiles}')
+        print(f'Local files found: {len(foundLocalFiles)}')
+        print(f'Local files missing: {len(missingLocalFiles)}')
+        print(f'Local files changed: {len(changedLocalFiles)}')
+        print(f'\nCloud files found: {len(foundCloudFiles)}')
+        print(f'Cloud files missing: {len(missingCloudFiles)}')
+        print(f'Cloud files changed: {len(changedCloudFiles)}')
+
+        if missingLocalFiles or changedLocalFiles or missingCloudFiles or changedCloudFiles:
+            return False
+        
+        return True
 
     def query(self, checksum=None, filename=None, directory=None, hostname=None):
         dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)

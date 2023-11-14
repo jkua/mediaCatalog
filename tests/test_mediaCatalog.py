@@ -81,6 +81,11 @@ class TestMediaCatalog:
         dbRecordCount = catalog.catalogDb.getFileCount()
         assert dbRecordCount == expectedMediaFiles
 
+    def test_verify_local(self, sample_catalog):
+        catalog = sample_catalog
+        assert catalog.verify(local=True)
+        assert catalog.verify(local=True, verifyChecksum=True)
+
     def test_query(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
         filename = 'IMG_0731.JPG'

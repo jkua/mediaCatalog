@@ -43,12 +43,17 @@ class GoogleCloudStorage(CloudStorage):
         bucket = self.storageClient.bucket(bucketName)
         return bucket.blob(objectName).exists()
 
-    def _validateFile(self, bucketName, objectName, sourcePath):
+    def _validateFile(self, bucketName, objectName, sourcePath=None, checksum=None):
+        if checksum is None and sourcePath is None:
+            raise Exception('Either checksum or sourcePath must be set!')
         bucket = self.storageClient.bucket(bucketName)
         blob = bucket.blob(objectName)
         blob.reload()
         remoteChecksum = self._convertB64Crc32c(blob.crc32c)
-        localChecksum = self._computeCrc32c(sourcePath)
+        if checksum:
+            localChecksum = checksum
+        else:
+            localChecksum = self._computeCrc32c(sourcePath)
         return remoteChecksum == localChecksum
 
     def _downloadFile(self, bucketName, objectName, destinationPath):
@@ -77,6 +82,15 @@ class GoogleCloudStorage(CloudStorage):
         blob = bucket.blob(objectName)
         blob.reload()
         return blob.content_type
+
+    def _getChecksum(self, bucketName, objectName):
+        bucket = self.storageClient.bucket(bucketName)
+        blob = bucket.blob(objectName)
+        blob.reload()
+        return self._convertB64Crc32c(blob.crc32c)
+
+    def _computeChecksum(self, sourcePath):
+        return self._computeCrc32c(sourcePath)
 
     def _computeCrc32c(self, sourcePath):
         helper = google_crc32c.Checksum()

@@ -40,7 +40,13 @@ class CloudUploader(object):
 					skippedFiles.append((sourcePath, None))
 					raise Exception('Cloud object has a different checksum!')
 			
-			self.catalogDb.setCloudStorage(checksum, self.cloudStorage.projectId, self.cloudStorage.bucketName, objectName)
+			objectChecksum = self.cloudStorage.getChecksum(objectName)
+			self.catalogDb.setCloudStorage(checksum, 
+											self.cloudStorage.projectId, 
+											self.cloudStorage.bucketName, 
+											objectName, 
+											objectChecksum
+											)
 			self.catalogDb.commit()
 			# self.catalogDb.printFileRecord(checksum)
 

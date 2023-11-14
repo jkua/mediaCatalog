@@ -135,6 +135,7 @@ class CatalogDatabase(object):
                     capture_datetime DATETIME NULL,
                     cloud_storage_id INTEGER NULL,
                     cloud_object_name TEXT NULL,
+                    cloud_object_checksum BLOB NULL,
                     FOREIGN KEY(host_id) REFERENCES host(id) ON DELETE SET NULL,
                     FOREIGN KEY(file_mime_type_id) REFERENCES mime_type(id) ON DELETE SET NULL,
                     FOREIGN KEY(capture_device_id) REFERENCES capture_device(id) ON DELETE SET NULL,
@@ -205,6 +206,15 @@ class CatalogDatabase(object):
                 print(f'WARNING: File already in database! Ignoring.')
 
     def read(self, checksum=None, filename=None, directory=None, hostname=None, all=False):
+        '''Returns a list of records matching the query
+            
+            :param checksum: Checksum of the file
+            :param filename: Filename of the file - accepts wildcards (*, ?)
+            :param directory: Directory of the file - accepts wildcards (*, ?)
+            :param hostname: Hostname of the file - accepts wildcards (*, ?)
+            :param all: Return all records in the database - ignores all other query filters
+            :returns list: List of records matching the query
+        '''
         if not all and checksum is None and filename is None and directory is None and hostname is None:
             raise Exception('Must supply at least one of checksum, filename, directory, or hostname!')
 
@@ -225,7 +235,8 @@ class CatalogDatabase(object):
                         cloud_storage.id as cloud_storage_id,
                         cloud_storage.name as cloud_name,
                         cloud_storage.bucket as cloud_bucket,
-                        cloud_object_name
+                        cloud_object_name,
+                        cloud_object_checksum
                     FROM file
                     LEFT JOIN host on file.host_id = host.id
                     LEFT JOIN mime_type on file.file_mime_type_id = mime_type.id
@@ -238,14 +249,26 @@ class CatalogDatabase(object):
             tokens.append('checksum = ?')
             values.append(checksum)
         if filename is not None:
-            tokens.append('file_name = ?')
-            values.append(filename)
+            if '*' in filename or '?' in filename:
+                tokens.append('file_name LIKE ?')
+                values.append(filename.replace('*', '%').replace('?', '_'))
+            else:
+                tokens.append('file_name = ?')
+                values.append(filename)
         if directory is not None:
-            tokens.append('directory = ?')
-            values.append(directory)
+            if '*' in directory or '?' in directory:
+                tokens.append('directory LIKE ?')
+                values.append(directory.replace('*', '%').replace('?', '_'))
+            else:
+                tokens.append('directory = ?')
+                values.append(directory)
         if hostname is not None:
-            tokens.append('host_name = ?')
-            values.append(hostname)
+            if '*' in hostname or '?' in hostname:
+                tokens.append('host_name LIKE ?')
+                values.append(hostname.replace('*', '%').replace('?', '_'))
+            else:
+                tokens.append('host_name = ?')
+                values.append(hostname)
         if not all:
             command += 'WHERE ' + ' AND '.join(tokens)
         else:
@@ -293,15 +316,16 @@ class CatalogDatabase(object):
         records = self.cursor.fetchall()
         return records[0][0] == 1
 
-    def setCloudStorage(self, checksum, projectId, bucketName, objectName):
+    def setCloudStorage(self, checksum, projectId, bucketName, objectName, objectChecksum):
         cloudStorageId = self.getCloudStorageId(projectId, bucketName, insert=True)
         self.cursor.execute(
             '''UPDATE file
                 SET cloud_storage_id=?,
-                    cloud_object_name=?
+                    cloud_object_name=?,
+                    cloud_object_checksum=?
                 WHERE checksum=?
             ''',
-            (cloudStorageId, objectName, checksum)
+            (cloudStorageId, objectName, objectChecksum, checksum)
         )
 
     def commit(self):

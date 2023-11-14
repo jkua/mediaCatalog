@@ -44,3 +44,8 @@ class TestMediaCatalog:
             assert objectName == os.path.join(catalog.config['cloudObjectPrefix'], record['checksum'])
             assert cloudStorage.validateFile(objectName, sourcePath)
             assert cloudStorage.getMimeType(objectName) == mimeType
+
+        # Use MediaCatalog.verify() to verify the files in the cloud
+        assert catalog.verify(cloudStorage=cloudStorage)
+        assert catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
+

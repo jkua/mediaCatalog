@@ -22,8 +22,8 @@ class CloudStorage(object):
     def fileExists(self, objectName):
         return self._fileExists(self.bucketName, objectName)
 
-    def validateFile(self, objectName, sourcePath):
-        return self._validateFile(self.bucketName, objectName, sourcePath)
+    def validateFile(self, objectName, sourcePath=None, checksum=None):
+        return self._validateFile(self.bucketName, objectName, sourcePath, checksum)
 
     def downloadFile(self, objectName, destinationPath):
         self._downloadFile(self.bucketName, objectName, destinationPath)
@@ -36,6 +36,12 @@ class CloudStorage(object):
 
     def getMimeType(self, objectName):
         return self._getMimeType(self.bucketName, objectName)
+
+    def getChecksum(self, objectName):
+        return self._getChecksum(self.bucketName, objectName)
+
+    def computeChecksum(self, sourcePath):
+        return self._computeChecksum(sourcePath)
 
     def _listFiles(self, bucketName, prefix=None):
         raise NotImplementedError
