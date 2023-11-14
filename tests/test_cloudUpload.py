@@ -20,7 +20,7 @@ class TestMediaCatalog:
         with open(os.path.join(os.path.dirname(__file__), 'config.yaml'), 'r') as f:
             catalog.config = yaml.safe_load(f)
         
-        cloudStorage = GoogleCloudStorage(catalog.config['project'], catalog.config['defaultBucket'])
+        cloudStorage = GoogleCloudStorage(catalog.config['cloudProject'], catalog.config['defaultCloudBucket'])
         # Wipe the bucket clean before uploading
         cloudFiles = cloudStorage.listFiles(prefix=catalog.config['cloudObjectPrefix']+'/')
         for cloudFile in cloudFiles:
@@ -39,8 +39,8 @@ class TestMediaCatalog:
             projectId = record['cloud_name']
             bucketName = record['cloud_bucket']
             objectName = record['cloud_object_name']
-            assert projectId == catalog.config['project']
-            assert bucketName == catalog.config['defaultBucket']
+            assert projectId == catalog.config['cloudProject']
+            assert bucketName == catalog.config['defaultCloudBucket']
             assert objectName == os.path.join(catalog.config['cloudObjectPrefix'], record['checksum'])
             assert cloudStorage.validateFile(objectName, sourcePath)
             assert cloudStorage.getMimeType(objectName) == mimeType
