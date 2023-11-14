@@ -119,6 +119,7 @@ class CatalogDatabase(object):
             '''
             )
 
+        # TODO: Add checksum index and maybe a path index
         self.cursor.execute(
             '''CREATE TABLE file
                 (
@@ -265,13 +266,29 @@ class CatalogDatabase(object):
 
         return records
 
-    def exists(self, checksum):
+    def existsChecksum(self, checksum):
         self.cursor.execute(
             'SELECT EXISTS(SELECT 1 FROM file WHERE checksum = ?)',
             (checksum,)
         )
         records = self.cursor.fetchall()
-        return records[0] == 1
+        return records[0][0] == 1
+
+    def existsPath(self, filename, directory=None, hostname=None):
+        command = 'SELECT EXISTS(SELECT 1 FROM file '
+        values = [filename]
+        tokens = ['file_name = ?']
+        if directory is not None:
+            tokens.append('directory = ?')
+            values.append(directory)
+        if hostname is not None:
+            tokens.append('host_name = ?')
+            values.append(hostname)
+        command += 'WHERE ' + ' AND '.join(tokens)
+        command += ')'
+        self.cursor.execute(command, values)
+        records = self.cursor.fetchall()
+        return records[0][0] == 1
 
     def setCloudStorage(self, checksum, projectId, bucketName, objectName):
         cloudStorageId = self.getCloudStorageId(projectId, bucketName, insert=True)

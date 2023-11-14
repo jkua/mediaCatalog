@@ -17,7 +17,7 @@ def getMimeTypes(filenames: list) -> list:
                     tag = et.get_tags(file, tags=['File:MIMEType'])[0]
                     mimeTypes.append(tag['File:MIMEType'])
                 except:
-                    logging.warning(f'Failed to get MIME type for {file}')
+                    # logging.warning(f'Failed to get MIME type for {file}')
                     mimeTypes.append(None)
     return mimeTypes
 

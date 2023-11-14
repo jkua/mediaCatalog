@@ -112,14 +112,14 @@ class MediaCatalog(object):
                 if mimeType and mimeType.split('/')[0] in self.MEDIA_MIME_TYPES:
                     checksum = self._checksum(filePath, self.CHECKSUM_MODE)
                     # TODO Extend the database check to also look for same capture device and filename/time in case of corruption
-                    if self.updateMode or not self.catalogDb.exists(checksum):
+                    if self.updateMode or not self.catalogDb.existsPath(filename=os.path.basename(filePath), directory=os.path.dirname(filePath)):
                         filesToProcess.append((filePath, checksum))
                     else:
                         skippedFiles.append((filePath, mimeType, checksum))
-                        logging.warning(f'File already in catalog! Skipping! {filePath}, Hash: {checksum}')
+                        print(f' -> Skipping file already in catalog: {filePath}')
                 else:
                     skippedFiles.append((filePath, mimeType, None))
-                    logging.warning(f'Skipping non-media/corrupt file: {filePath} ({mimeType})')
+                    print(f' -> Skipping non-media/corrupt file: {filePath} ({mimeType})')
 
             if not filesToProcess:
                 continue
@@ -138,11 +138,15 @@ class MediaCatalog(object):
                         import pdb; pdb.set_trace()
                     
                     md[self.checksumKey] = checksum
-                    print(f'{file} -> {checksum}')
+                    print(f' -> {file} -> {checksum}')
 
-                    if self.catalogDb.exists(checksum):
-                        updatedFiles.append((file, checksum))
-                        logging.info('File already in catalog! Updating!')
+                    if self.catalogDb.existsPath(filename=md['File:FileName'],
+                                                 directory=md['File:Directory']):
+                        if self.updateMode:
+                            updatedFiles.append((file, checksum))
+                            print('        File in catalog - will attempt to update')
+                        else:
+                            raise RuntimeError('An existing file should not be in the main processing loop if not in update mode!')
                     else:
                         newFiles.append((file, checksum))
 
