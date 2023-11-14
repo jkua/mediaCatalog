@@ -38,22 +38,21 @@ class MetadataCatalogHDT(MetadataCatalog):
             os.makedirs(metadataDirectory)
 
         # Check for existing metadata
-        existingMetadata, existingMdPath = self.read(hash_, 
-                                                    filename=metadata['File:FileName'],
-                                                    directory=metadata['File:Directory'],
-                                                    hostname=metadata['HostName'])
+        existingMetadata, existingMetadataPath = self.read(hash_, 
+                                                        filename=metadata['File:FileName'],
+                                                        directory=metadata['File:Directory'],
+                                                        hostname=metadata['HostName'])
 
-        write_ = True
         if existingMetadata:
-            print(f'Metadata exists for this file! {hash_}')
             if updateMode:
-                print(f'    Updating metadata...')
+                metadataPath = existingMetadataPath
+                logging.info(f'Updating metadata at: {metadataPath}')
             else:
-                print('    Will not update metadata.')
-            
-        if write_:
-            with open(metadataPath, 'wt') as f:
-                f.write(json.dumps(metadata) + '\n')
+                logging.warning(f'Metadata exists for this file! {hash_} Will not update - set updateMode to update.')
+                return None            
+
+        with open(metadataPath, 'wt') as f:
+            f.write(json.dumps(metadata) + '\n')
 
         return metadataPath
 
@@ -97,9 +96,32 @@ class MetadataCatalogHDT(MetadataCatalog):
         metadata = [json.loads(open(p, 'rt').read()) for p in paths]
         return metadata, paths
 
-    def exists(self, hash_):
+    def exists(self, hash_, filename=None, directory=None, hostname=None):
+        hashExists = self._existsHash(hash_)
+        noFilters = filename is None and directory is None and hostname is None
+        if noFilters or not hashExists:
+            return hashExists
+        
+        metadataAll, pathsAll = self.getAllMetadataForHash(hash_)
+        if not metadataAll:
+            raise Exception('Hash exists but no metadata found!')
+
+        count = 0
+        for metadata, path in zip(metadataAll, pathsAll):
+            if filename is not None and metadata['File:FileName'] != filename:
+                continue
+            if directory is not None and metadata['File:Directory'] != directory:
+                continue
+            if hostname is not None and metadata['HostName'] != hostname:
+                continue
+            count += 1
+
+        return count
+
+
+    def _existsHash(self, hash_):
         path = self.hashTree.getPath(hash_)
-        paths = glob.glob(path + '*')
+        paths = glob.glob(path + '*.json')
         return len(paths)
 
     def getMetadataPath(self, hash_, new=True):

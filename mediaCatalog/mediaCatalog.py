@@ -116,10 +116,11 @@ class MediaCatalog(object):
                         filesToProcess.append((filePath, checksum))
                     else:
                         skippedFiles.append((filePath, mimeType, checksum))
-                        print(f' -> Skipping file already in catalog: {filePath}')
+                        print(f' -> {filePath} -> [SKIP] File already in catalog')
                 else:
                     skippedFiles.append((filePath, mimeType, None))
-                    print(f' -> Skipping non-media/corrupt file: {filePath} ({mimeType})')
+                    mimeTypeOutput = mimeType if mimeType else 'Unknown'
+                    print(f' -> {filePath} -> [SKIP] Non-media/corrupt file of type: {mimeTypeOutput}')
 
             if not filesToProcess:
                 continue
@@ -138,17 +139,21 @@ class MediaCatalog(object):
                         import pdb; pdb.set_trace()
                     
                     md[self.checksumKey] = checksum
-                    print(f' -> {file} -> {checksum}')
+
+                    output = f' -> {file}'
 
                     if self.catalogDb.existsPath(filename=md['File:FileName'],
                                                  directory=md['File:Directory']):
                         if self.updateMode:
                             updatedFiles.append((file, checksum))
-                            print('        File in catalog - will attempt to update')
+                            output += ' -> [UPDATE] File in catalog'
                         else:
                             raise RuntimeError('An existing file should not be in the main processing loop if not in update mode!')
                     else:
                         newFiles.append((file, checksum))
+                        output += f' -> [NEW] {checksum}'
+
+                    print(output)
 
                     if md['File:MIMEType'].startswith('audio'):
                         logging.warning('Audio fingerprinting disabled!')
@@ -176,9 +181,11 @@ class MediaCatalog(object):
         print(f'New files: {len(newFiles)}')
         print(f'Updated files: {len(updatedFiles)}')
         print(f'Skipped files: {len(skippedFiles)}')
+        noUpdateFlag = False
         for file, mimeType, checksum in skippedFiles:
             if checksum:
                 print(f'    {file} -> already in catalog: {checksum}')
+                noUpdateFlag = True
             elif mimeType:
                 print(f'    {file} -> not media - type: {mimeType}')
             else:
@@ -187,6 +194,9 @@ class MediaCatalog(object):
         print(f'Failed files: {len(failedFiles)}')
         for file, checksum in failedFiles:
             print(f'    {file} -> unable to read metadata!')
+
+        if noUpdateFlag:
+            print(f'\nSome files were skipped because they are already in the catalog. Use the -u flag to update them.')
 
     def query(self, checksum=None, filename=None, directory=None, hostname=None):
         dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)

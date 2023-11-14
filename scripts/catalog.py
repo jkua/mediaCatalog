@@ -14,7 +14,10 @@ if __name__=='__main__':
     parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Verbose output')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
     cataloger = MediaCatalog(args.catalog, create=args.new, update=args.update, verbose=args.verbose)
 
     for path in args.path:
