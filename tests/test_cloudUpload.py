@@ -14,7 +14,7 @@ class TestMediaCatalog:
     def sample_data_dir(self):
         return os.path.join(os.path.dirname(__file__), '..', 'data/sample')
     
-    def test_upload(self, catalog_dir, sample_data_dir):
+    def test_upload(self, catalog_dir, sample_data_dir, tmp_path):
         catalog = MediaCatalog(catalog_dir, create=True)
         catalog.catalog(sample_data_dir)
         with open(os.path.join(os.path.dirname(__file__), 'config.yaml'), 'r') as f:
@@ -44,6 +44,11 @@ class TestMediaCatalog:
             assert objectName == os.path.join(catalog.config['cloudObjectPrefix'], record['checksum'])
             assert cloudStorage.validateFile(objectName, sourcePath)
             assert cloudStorage.getMimeType(objectName) == mimeType
+
+        # Validate the last file uploaded by downloading it and comparing it to the original
+        downloadPath = tmp_path / 'cloud_download_test'
+        cloudStorage.downloadFile(objectName, downloadPath)
+        assert catalog.checksum(downloadPath) == catalog.checksum(sourcePath)
 
         # Use MediaCatalog.verify() to verify the files in the cloud
         assert catalog.verify(cloudStorage=cloudStorage)
