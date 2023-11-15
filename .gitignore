@@ -1,4 +1,8 @@
 __pycache__
 *.pyc
 *.egg-info
+.DS_Store
 config.yaml
+build/
+catalog-*/
+data/
