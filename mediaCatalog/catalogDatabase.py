@@ -1,6 +1,7 @@
 import sqlite3
 from packaging.version import Version
 import logging
+import os
 
 from .utils import getPreciseCaptureTimeFromExif
 
@@ -9,7 +10,7 @@ class CatalogDatabase(object):
     MIN_SCHEMA_VERSION = Version('0.1.0')
 
     def __init__(self, dbPath):
-        self.dbPath = dbPath
+        self.dbPath = os.path.abspath(dbPath)
         print(f'Opening catalog database at: {self.dbPath}')
         self._open_db()
 
@@ -172,7 +173,7 @@ class CatalogDatabase(object):
         values = (
                     metadata['File:SHA256Sum'],
                     metadata['File:FileName'],
-                    metadata['File:Directory'],
+                    self._normalizeDirectory(metadata['File:Directory']),
                     hostId,
                     metadata['File:FileSize'],
                     metadata['File:FileModifyDate'],
@@ -217,6 +218,8 @@ class CatalogDatabase(object):
         '''
         if not all and checksum is None and filename is None and directory is None and hostname is None:
             raise Exception('Must supply at least one of checksum, filename, directory, or hostname!')
+
+        directory = self._normalizeDirectory(directory)
 
         command = '''SELECT file.id,
                         checksum,
@@ -301,6 +304,8 @@ class CatalogDatabase(object):
         return records[0][0] == 1
 
     def existsPath(self, filename, directory=None, hostname=None):
+        directory = self._normalizeDirectory(directory)
+
         command = 'SELECT EXISTS(SELECT 1 FROM file '
         values = [filename]
         tokens = ['file_name = ?']
@@ -456,6 +461,15 @@ class CatalogDatabase(object):
         print('')
         for key, value in zip(record.keys(), record):
             print(f'{key}: {value}')
+
+    def _normalizeDirectory(self, directory):
+        if directory is None:
+            return None
+
+        directory = os.path.normpath(directory)
+        if not directory.endswith('*'):
+            directory += '/'
+        return directory
 
 
 if __name__=='__main__':

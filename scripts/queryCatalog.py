@@ -66,7 +66,7 @@ if __name__=='__main__':
 
 			for metadata, metadataPath in metadataAndPaths:
 				if metadata['File:FileName'] == record['file_name'] and \
-					metadata['File:Directory'] == record['directory'] and \
+					metadata['File:Directory'] == os.path.normpath(record['directory']) and \
 					metadata['HostName'] == record['host_name']:
 						
 					print(f'\n    Metadata - Path: {metadataPath} ')

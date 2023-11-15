@@ -16,6 +16,6 @@ if __name__=='__main__':
 	logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
 
 	with MediaCatalog(args.catalog) as catalog:
-		cloudStorage = GoogleCloudStorage(catalog.config['project'], catalog.config['defaultBucket'])
+		cloudStorage = GoogleCloudStorage(catalog.config['cloudProject'], catalog.config['defaultCloudBucket'])
 		uploader = CloudUploader(catalog, cloudStorage)
 		uploader.upload()

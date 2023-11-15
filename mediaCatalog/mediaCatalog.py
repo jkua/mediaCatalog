@@ -109,7 +109,7 @@ class MediaCatalog(object):
             if not fileList:
                 continue
             filesToProcess = []
-            fullFilePaths = [os.path.join(dirName, fname) for fname in fileList]
+            fullFilePaths = [os.path.abspath(os.path.join(dirName, fname)) for fname in fileList]
             mimeTypes = getMimeTypes(fullFilePaths)
             for filePath, mimeType in sorted(zip(fullFilePaths, mimeTypes)):
                 if mimeType and mimeType.split('/')[0] in self.MEDIA_MIME_TYPES:
@@ -222,7 +222,11 @@ class MediaCatalog(object):
             :returns: (bool) True if all files are found and optionally matches checksums, False otherwise
         '''
         if path:
-            records = self.catalogDb.read(directory=path.strip('/') + '*')
+            path = os.path.abspath(path)
+            directory = self.catalogDb._normalizeDirectory(path)
+            if not directory.endswith('*'):
+                directory += '*'
+            records = self.catalogDb.read(directory=directory)
         else:
             records = self.catalogDb.read(all=True)
         if not local and not cloudStorage:
@@ -271,14 +275,16 @@ class MediaCatalog(object):
         print('\nVerification complete!')
         print('======================')
         if path:
-            print(f'*** For path: {path} ***')
+            print(f'For path: {path}')
         print(f'Files in catalog: {numFiles}')
-        print(f'Local files found: {len(foundLocalFiles)}')
-        print(f'Local files missing: {len(missingLocalFiles)}')
-        print(f'Local files changed: {len(changedLocalFiles)}')
-        print(f'\nCloud files found: {len(foundCloudFiles)}')
-        print(f'Cloud files missing: {len(missingCloudFiles)}')
-        print(f'Cloud files changed: {len(changedCloudFiles)}')
+        if local:
+            print(f'\nLocal files found: {len(foundLocalFiles)}')
+            print(f'Local files missing: {len(missingLocalFiles)}')
+            print(f'Local files changed: {len(changedLocalFiles)}')
+        if cloudStorage:
+            print(f'\nCloud files found: {len(foundCloudFiles)}')
+            print(f'Cloud files missing: {len(missingCloudFiles)}')
+            print(f'Cloud files changed: {len(changedCloudFiles)}')
 
         if missingLocalFiles or changedLocalFiles or missingCloudFiles or changedCloudFiles:
             return False
@@ -286,6 +292,7 @@ class MediaCatalog(object):
         return True
 
     def query(self, checksum=None, filename=None, directory=None, hostname=None):
+        directory = os.path.abspath(directory) if directory else None
         dbRecords = self.catalogDb.read(checksum=checksum, filename=filename, directory=directory, hostname=hostname)
         if checksum is not None:
             metadataAndPaths = self.metadataCatalog.read(checksum, filename=filename, directory=directory, hostname=hostname, all=True)

@@ -1,5 +1,6 @@
 import pytest
 import os
+import shutil
 import yaml
 from mediaCatalog.mediaCatalog import MediaCatalog
 
@@ -9,8 +10,10 @@ class TestMediaCatalog:
         return tmp_path / 'catalog'
 
     @pytest.fixture
-    def sample_data_dir(self):
-        return os.path.join(os.path.dirname(__file__), '..', 'data/sample')
+    def sample_data_dir(self, tmp_path):
+        temp_sample_dir = tmp_path / 'sample'
+        shutil.copytree(os.path.join(os.path.dirname(__file__), '..', 'data/sample'), temp_sample_dir)
+        return temp_sample_dir
     
     @pytest.fixture
     def new_catalog(self, catalog_dir):
@@ -81,10 +84,13 @@ class TestMediaCatalog:
         dbRecordCount = catalog.catalogDb.getFileCount()
         assert dbRecordCount == expectedMediaFiles
 
-    def test_verify_local(self, sample_catalog):
+    def test_verify_local(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
         assert catalog.verify(local=True)
         assert catalog.verify(local=True, verifyChecksum=True)
+
+        os.remove(os.path.join(sample_data_dir, 'album1', 'IMG_0731.JPG'))
+        assert catalog.verify(local=True) == False
 
     def test_query(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
@@ -124,8 +130,10 @@ class TestMediaCatalog:
         assert len(metadataAndPaths) == 1
         dbRecord = dbRecords[0]
         metadata, metadataPath = metadataAndPaths[0]
+        print(os.path.normpath(dbRecord['directory']))
+        print(albumDir)
         assert dbRecord['file_name'] == filename
-        assert dbRecord['directory'] == albumDir
+        assert os.path.normpath(dbRecord['directory']) == albumDir
         assert dbRecord['checksum'] == checksum
         assert dbRecord['file_mime_type'] == 'image/jpeg'
         assert metadata['File:FileName'] == filename
@@ -136,7 +144,7 @@ class TestMediaCatalog:
         # Query by filename - there are two files with the same filename
         dbRecords, metadataAndPaths = catalog.query(filename=filename)
         assert len(dbRecords) == 2
-        # assert len(metadataAndPaths) == 2
+        assert len(metadataAndPaths) == 2
         for dbRecord, metadataAndPath in zip(dbRecords, metadataAndPaths):
             metadata, metadataPath = metadataAndPath
             assert dbRecord['file_name'] == filename
@@ -153,7 +161,7 @@ class TestMediaCatalog:
         dbRecord = dbRecords[0]
         metadata, metadataPath = metadataAndPaths[0]
         assert dbRecord['file_name'] == filename
-        assert dbRecord['directory'] == albumDir
+        assert os.path.normpath(dbRecord['directory']) == albumDir
         assert dbRecord['checksum'] == checksum
         assert dbRecord['file_mime_type'] == 'image/jpeg'
         assert metadata['File:FileName'] == filename

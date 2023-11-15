@@ -15,7 +15,8 @@ setup(
     ],
     scripts=[
         'scripts/catalog.py', 
-        'scripts/queryCatalog.py', 
+        'scripts/queryCatalog.py',
+        'scripts/verifyCatalog.py', 
         'scripts/cloudUpload.py', 
         'scripts/cloudDownload.py',
         'scripts/getMetadata.py'

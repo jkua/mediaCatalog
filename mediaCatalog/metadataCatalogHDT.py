@@ -57,6 +57,7 @@ class MetadataCatalogHDT(MetadataCatalog):
         return metadataPath
 
     def read(self, hash_, filename=None, directory=None, hostname=None, all=False):
+        directory = os.path.normpath(directory) if directory else None
         if filename is None and directory is None and hostname is None:
             noFilters = False
         else:
