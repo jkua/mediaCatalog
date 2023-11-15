@@ -89,8 +89,24 @@ class TestMediaCatalog:
         assert catalog.verify(local=True)
         assert catalog.verify(local=True, verifyChecksum=True)
 
-        os.remove(os.path.join(sample_data_dir, 'album1', 'IMG_0731.JPG'))
-        assert catalog.verify(local=True) == False
+        albumDir = os.path.join(sample_data_dir, 'album1')
+        # Remove a file
+        shutil.move(os.path.join(albumDir, 'IMG_0731.JPG'), os.path.join(albumDir, 'IMG_0731.JPG.bak'))
+        assert not catalog.verify(local=True)
+        assert not catalog.verify(local=True, verifyChecksum=True)
+        
+        # Truncate a file - verification without checksum verification should still pass
+        with open(os.path.join(albumDir, 'IMG_0731.JPG'), 'wb') as f:
+            data = open(os.path.join(albumDir, 'IMG_0731.JPG.bak'), 'rb').read()
+            f.write(data[:len(data)//2])
+        assert catalog.verify(local=True)
+        assert not catalog.verify(local=True, verifyChecksum=True)
+
+        # Restore the file
+        shutil.move(os.path.join(albumDir, 'IMG_0731.JPG.bak'), os.path.join(albumDir, 'IMG_0731.JPG'))
+        assert catalog.verify(local=True)
+        assert catalog.verify(local=True, verifyChecksum=True)
+
 
     def test_query(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog

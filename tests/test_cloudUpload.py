@@ -49,3 +49,18 @@ class TestMediaCatalog:
         assert catalog.verify(cloudStorage=cloudStorage)
         assert catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
 
+        # Delete the last file from the cloud - both should fail
+        cloudStorage.deleteFile(objectName)
+        assert not catalog.verify(cloudStorage=cloudStorage)
+        assert not catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
+
+        # Upload the last file with a bad checksum - only checksum verification will fail
+        cloudStorage.uploadFile(os.path.join(sample_data_dir, 'album2_corrupt', '$MG_0119.JPG'), objectName, mimeType)
+        assert catalog.verify(cloudStorage=cloudStorage)
+        assert not catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
+
+        # Restore the last file
+        cloudStorage.uploadFile(os.path.join(directory, filename), objectName, mimeType)
+        assert catalog.verify(cloudStorage=cloudStorage)
+        assert catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
+
