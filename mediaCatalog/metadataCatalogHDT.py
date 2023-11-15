@@ -18,18 +18,26 @@ class HashDirectoryTree(object):
 
 
 class MetadataCatalogHDT(MetadataCatalog):
-    def __init__(self, path, hashMode):
+    VALID_HASH_MODES = ['SHA256', 'MD5']
+    def __init__(self, path, hashMode, createPath=False):
         super().__init__()
 
+        if not os.path.exists(path):
+            if createPath:
+                os.makedirs(path)
+            else:
+                raise ValueError('Missing metadata folder!')
         self.path = path
+        if hashMode not in self.VALID_HASH_MODES:
+            raise ValueError(f'Invalid hash mode: {hashMode}! Must be one of {self.VALID_HASH_MODES}')
         self.hashMode = hashMode
         self.hashKey = f'File:{hashMode}Sum'
+        self.filenameKey = 'File:FileName'
+        self.directoryKey = 'File:Directory'
+        self.hostnameKey = 'HostName'
         self.hashTree = HashDirectoryTree(path, hashLength=32, segmentLength=2, depth=2)
 
-        if not os.path.exists(self.path):
-            raise Exception('Missing metadata folder!')
-
-    def write(self, metadata, updateMode):
+    def write(self, metadata, updateMode=False):
         hash_ = metadata[self.hashKey]      
 
         metadataPath = self.getMetadataPath(hash_, new=True)
@@ -39,9 +47,9 @@ class MetadataCatalogHDT(MetadataCatalog):
 
         # Check for existing metadata
         existingMetadata, existingMetadataPath = self.read(hash_, 
-                                                        filename=metadata['File:FileName'],
-                                                        directory=metadata['File:Directory'],
-                                                        hostname=metadata['HostName'])
+                                                        filename=metadata[self.filenameKey],
+                                                        directory=metadata[self.directoryKey],
+                                                        hostname=metadata[self.hostnameKey])
 
         if existingMetadata:
             if updateMode:
@@ -64,20 +72,18 @@ class MetadataCatalogHDT(MetadataCatalog):
             noFilters = True
 
         metadataAll, pathsAll = self.getAllMetadataForHash(hash_)
-        if not metadataAll:
-            return None, None
-
+        
         outputMetadata = []
         for metadata, path in zip(metadataAll, pathsAll):
-            if filename is not None and metadata['File:FileName'] != filename:
+            if filename is not None and metadata[self.filenameKey] != filename:
                 continue
-            if directory is not None and metadata['File:Directory'] != directory:
+            if directory is not None and metadata[self.directoryKey] != directory:
                 continue
-            if hostname is not None and metadata['HostName'] != hostname:
+            if hostname is not None and metadata[self.hostnameKey] != hostname:
                 continue
             outputMetadata.append((metadata, path))
 
-        if not outputMetadata:
+        if not outputMetadata and not all:
             return None, None
             
         if all:
@@ -90,6 +96,34 @@ class MetadataCatalogHDT(MetadataCatalog):
                 logging.warning(f'Multiple ({len(outputMetadata)}) metadata entries found for criteria! Returning first')
 
         return outputMetadata[0]
+
+    def delete(self, hash_, filename=None, directory=None, hostname=None, all=False):
+        ''' Deletes metadata for a file. If all is True, all metadata matching the query is deleted.
+
+            :param hash_: (str) The hash of the file to delete metadata for
+            :param filename: (str) The filename of the file to delete metadata for
+            :param directory: (str) The directory of the file to delete metadata for
+            :param hostname: (str) The hostname of the file to delete metadata for
+            :param all: (bool) If True, all metadata matching the query is deleted
+                               If False, metadata is only deleted if there is a single match
+            :returns: (int) number of metadata entries deleted
+        '''
+        output = self.read(hash_, filename=filename, directory=directory, hostname=hostname, all=True)
+        if not all and len(output) > 1:
+            raise Exception('Multiple metadata entries found for query! Set all=True to delete all.')
+        
+        for metadata, path in output:
+            os.remove(path)
+            for i in self.hashTree.depth:
+                path = os.path.split(path)[0]
+                if os.path.abspath(path) == os.path.abspath(self.hashTree.rootPath):
+                    raise Exception('Cannot delete root path!')
+                try:
+                    os.rmdir(path)
+                except OSError:
+                    break
+
+        return len(output)
 
     def getAllMetadataForHash(self, hash_):
         basePath = os.path.join(self.hashTree.getPath(hash_), hash_)
@@ -109,11 +143,11 @@ class MetadataCatalogHDT(MetadataCatalog):
 
         count = 0
         for metadata, path in zip(metadataAll, pathsAll):
-            if filename is not None and metadata['File:FileName'] != filename:
+            if filename is not None and metadata[self.filenameKey] != filename:
                 continue
-            if directory is not None and metadata['File:Directory'] != directory:
+            if directory is not None and metadata[self.directoryKey] != directory:
                 continue
-            if hostname is not None and metadata['HostName'] != hostname:
+            if hostname is not None and metadata[self.hostnameKey] != hostname:
                 continue
             count += 1
 
@@ -121,8 +155,8 @@ class MetadataCatalogHDT(MetadataCatalog):
 
 
     def _existsHash(self, hash_):
-        path = self.hashTree.getPath(hash_)
-        paths = glob.glob(path + '*.json')
+        basePath = os.path.join(self.hashTree.getPath(hash_), hash_)        
+        paths = glob.glob(basePath + '*.json')
         return len(paths)
 
     def getMetadataPath(self, hash_, new=True):

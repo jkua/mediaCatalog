@@ -20,6 +20,7 @@ class MediaCatalog(object):
     MEDIA_MIME_TYPES = ['image', 'video', 'audio', 'text']
     CHECKSUM_MODE = 'SHA256'
     DEFAULT_CLOUD_OBJECT_PREFIX = 'file'
+    HASH_CHUNK_SIZE = 1024*1024*16
 
     def __init__(self, catalogPath, create=False, update=False, verbose=False):
         self.catalogPath = catalogPath
@@ -30,7 +31,6 @@ class MediaCatalog(object):
         self.configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
         self.metadataCatalogPath = os.path.join(self.catalogPath, self.METADATA_FOLDERNAME)
-        self.hashChunkSize = 1024*1024*16
         self.hashDict = {}
         self.config = None
         self.catalogDb = None
@@ -136,11 +136,8 @@ class MediaCatalog(object):
                     if md is None:
                         failedFiles.append((file, checksum))
                         continue
-                    try:
-                        md['HostName'] = hostname
-                    except:
-                        import pdb; pdb.set_trace()
                     
+                    md['HostName'] = hostname
                     md[self.checksumKey] = checksum
 
                     output = f' -> {file}'
@@ -303,11 +300,54 @@ class MediaCatalog(object):
                 metadataAndPaths.extend(currentMetadataAndPaths)
         return dbRecords, metadataAndPaths
 
+    def remove(self, records, cloudStorage=None):
+        ''' Removes files from the catalog and deletes the metadata files. 
+            Typically called with the output of query(). Checks to see if
+            the file has been removed from the cloud first. Then removes
+            from the metadata catalog and then the finally the database.
+        
+            :param records: (dict) Remove these records from the catalog
+            :returns: (int) Number of files removed
+        '''
+        recordsRemoved = []
+        for i, record in enumerate(records, 1):
+            checksum = record['checksum']
+            filename = record['file_name']
+            directory = record['directory']
+            hostname = record['host_name']
+            objectName = record['cloud_object_name']
+            fullFilePath = os.path.join(directory, filename)
+            percentComplete = i/len(records)*100
+            print(f'[{i}/{len(records)} ({percentComplete:.3f %})] Removing {fullFilePath} ({checksum})...')
+            
+            if objectName:
+                if cloudStorage:
+                    cloudStorage.deleteFile(objectName)
+                else:
+                    raise RuntimeError('Cannot remove files from the catalog that are in the cloud! Remove from the cloud first.')
+
+            self.metadataCatalog.delete(checksum, filename, directory, hostname)
+            self.catalogDb.delete(checksum, filename, directory, hostname)
+            recordsRemoved.append(record)
+
+        self.catalogDb.commit()
+
+        return recordsRemoved
+
     def checksum(self, filename: str) -> str:
         return self._checksum(filename, self.CHECKSUM_MODE)
 
+    @classmethod
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)
+
+    @classmethod
+    def _addAdditionalMetadata(self, metadata: dict) -> dict:
+        metadata['HostName'] = socket.gethostname()
+        fullPath = os.path.join(metadata['File:Directory'], metadata['File:FileName'])
+        metadata['File:SHA256Sum'] = self._checksum(fullPath, self.CHECKSUM_MODE)
+        
+        return metadata
     
     def _compareMetadata(self, metadata1: dict, metadata2: dict) -> bool:
         if len(metadata1.keys()) != len(metadata2.keys()):
@@ -322,11 +362,12 @@ class MediaCatalog(object):
             
         return True
 
+    @classmethod
     def _checksum(self, filename: str, mode: str) -> str:
         if mode == 'MD5':
-            return md5sum(filename, self.hashChunkSize)
+            return md5sum(filename, self.HASH_CHUNK_SIZE)
         elif mode == 'SHA256':
-            return sha256sum(filename, self.hashChunkSize)
+            return sha256sum(filename, self.HASH_CHUNK_SIZE)
         else:
             raise ValueError(f'Invalid checksum mode ({mode})!')
         
