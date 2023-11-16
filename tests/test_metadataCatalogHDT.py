@@ -293,6 +293,11 @@ class TestMetadataCatalogHDT:
         assert type(output[0]) is dict and type(output[1]) is str
         assert (output[0] == metadata2) and (output[1] == metadataPath2)
 
+        # Read by checksum, directory, and invalid hostname
+        output = metadataCatalog.read(checksum, directory=dataRootPath1, hostname='INVALID')
+        assert type(output) is tuple and len(output) == 2
+        assert output[0] is None and output[1] is None
+
         # Read by checksum, directory, and hostname with one result
         output = metadataCatalog.read(checksum, directory=dataRootPath1, hostname=hostname)
         assert type(output) is tuple and len(output) == 2
@@ -313,6 +318,87 @@ class TestMetadataCatalogHDT:
             assert (md == metadata1) ^ (md == metadata2)
             assert (mdPath == metadataPath1) ^ (mdPath == metadataPath2)
 
-    def test_delete(self, tmp_path, sample_data_dir):
-        pass
+        # Read by checksum and invalid hostname
+        output = metadataCatalog.read(checksum, hostname='INVALID')
+        assert type(output) is tuple and len(output) == 2
+        assert output[0] is None and output[1] is None
 
+    def test_delete(self, new_catalog, sample_data_dir):
+        metadataCatalog = new_catalog
+        
+        dataRootPath = os.path.join(sample_data_dir, 'album1')
+        paths = os.listdir(dataRootPath)
+        paths.sort()
+
+        metadata = []
+        metadataPaths = []
+        for i, path in enumerate(paths):
+            fullPath = os.path.join(dataRootPath, path)
+            if os.path.isfile(fullPath):
+                md = MediaCatalog._getMetadata(fullPath)[0]
+                md = MediaCatalog._addAdditionalMetadata(md)
+                mdPath = metadataCatalog.write(md)
+                metadata.append(md)
+                metadataPaths.append(mdPath)
+
+        # Delete metadata one by one, verifying that the metadata is deleted and the rest remain
+        for i, (md, mdPath) in enumerate(zip(metadata, metadataPaths)):
+            assert metadataCatalog.delete(md[metadataCatalog.hashKey]) == 1
+            assert not os.path.exists(mdPath)
+            for remainPath in metadataPaths[i+1:]:
+                assert os.path.exists(remainPath)
+
+        assert len(os.listdir(metadataCatalog.path)) == 0            
+
+    def test_delete_duplicates(self, new_catalog, sample_data_dir):
+        metadataCatalog = new_catalog
+        
+        dataRootPath1 = os.path.join(sample_data_dir, 'album1')
+        paths = os.listdir(dataRootPath1)
+        paths.sort()
+
+        otherMdPaths = []
+        for i, path in enumerate(paths):
+            fullPath = os.path.join(dataRootPath1, path)
+            if os.path.isfile(fullPath):
+                if i == 0:
+                    metadata1 = MediaCatalog._getMetadata(fullPath)[0]
+                    metadata1 = MediaCatalog._addAdditionalMetadata(metadata1)
+                    metadataPath1 = metadataCatalog.write(metadata1)
+                    firstPath = path
+                else:
+                    md = MediaCatalog._getMetadata(fullPath)[0]
+                    md = MediaCatalog._addAdditionalMetadata(md)
+                    otherMdPath = metadataCatalog.write(md)
+                    otherMdPaths.append(otherMdPath)
+
+        # Add duplicate file in a different directory
+        dataRootPath2 = os.path.join(sample_data_dir, 'album1_duplicate')
+        path = os.path.join(dataRootPath2, firstPath)
+        metadata2 = MediaCatalog._getMetadata(os.path.join(dataRootPath2, path))[0]
+        metadata2 = MediaCatalog._addAdditionalMetadata(metadata2)
+        metadataPath2 = metadataCatalog.write(metadata2)
+
+        # Delete metadata 1
+        assert metadataCatalog.delete(metadata1[metadataCatalog.hashKey], 
+                                filename=metadata1[metadataCatalog.filenameKey], 
+                                directory=dataRootPath1, 
+                                hostname=metadata1[metadataCatalog.hostnameKey])
+
+        # Check that metadata 1 was deleted
+        assert not os.path.exists(metadataPath1)
+        # Check that metadata 2 was not deleted
+        assert os.path.exists(metadataPath2)
+
+        # Delete metadata 2
+        assert metadataCatalog.delete(metadata2[metadataCatalog.hashKey], 
+                                filename=metadata2[metadataCatalog.filenameKey], 
+                                directory=dataRootPath2, 
+                                hostname=metadata2[metadataCatalog.hostnameKey])
+
+        # Check that metadata 2 was deleted
+        assert not os.path.exists(metadataPath2)
+
+        # Check that the other metadata was not deleted
+        for otherMdPath in otherMdPaths:
+            assert os.path.exists(otherMdPath)       

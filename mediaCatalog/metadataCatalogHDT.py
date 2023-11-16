@@ -122,7 +122,7 @@ class MetadataCatalogHDT(MetadataCatalog):
         
         for metadata, path in output:
             os.remove(path)
-            for i in self.hashTree.depth:
+            for i in range(self.hashTree.depth):
                 path = os.path.split(path)[0]
                 if os.path.abspath(path) == os.path.abspath(self.hashTree.rootPath):
                     raise Exception('Cannot delete root path!')
