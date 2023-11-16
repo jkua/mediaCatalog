@@ -161,15 +161,21 @@ class MetadataCatalogHDT(MetadataCatalog):
 
     def getMetadataPath(self, hash_, new=True):
         basePath = os.path.join(self.hashTree.getPath(hash_), hash_)
-        existingPaths = sorted(glob.glob(basePath + '*.json'))
+        existingPaths = glob.glob(basePath + '*.json')
         if not new or not existingPaths:
             return basePath + '.json'
         
-        head, ext = os.path.splitext(existingPaths[-1])
-        directory, baseName = os.path.split(head)
-        if len(baseName) == len(hash_):
-            lastIndex = 0
-        else:
-            lastIndex = int(baseName.split('-')[-1])
+        indices = []
+        for p in existingPaths:
+            directory, filename = os.path.split(p)
+            head, ext = os.path.splitext(filename)
+            tokens = head.split('-')
+            if len(tokens) > 1:
+                indices.append(int(tokens[-1]))
+            else:
+                indices.append(0)
 
-        return os.path.join(directory, f'{baseName}-{lastIndex+1:02d}.json')
+        basename = tokens[0]
+        lastIndex = max(indices)    
+
+        return os.path.join(directory, f'{basename}-{lastIndex+1:02d}.json')
