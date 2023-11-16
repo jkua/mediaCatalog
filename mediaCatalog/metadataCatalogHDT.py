@@ -65,6 +65,14 @@ class MetadataCatalogHDT(MetadataCatalog):
         return metadataPath
 
     def read(self, hash_, filename=None, directory=None, hostname=None, all=False):
+        ''' Reads metadata for a file. If all is True, all metadata matching the query is returned.
+            :param hash_: (str) The hash of the file(s) to read metadata for
+            :param filename: (str) The filename of the file(s) to read metadata for
+            :param directory: (str) The directory of the file(s) to read metadata for
+            :param hostname: (str) The hostname of the file(s) to read metadata for
+            :param all: (bool) If True, all metadata matching the query is returned, else only the first match is returned
+            :returns: (tuple) (metadata, path) if all is False, else [(metadata, path), ...]
+        '''
         directory = os.path.normpath(directory) if directory else None
         if filename is None and directory is None and hostname is None:
             noFilters = False
