@@ -63,10 +63,8 @@ class TestMediaCatalog:
         os.rename(config_path + '.bak', config_path)
         catalog = MediaCatalog(catalog_dir)
 
-    def test_generate_catalog(self, sample_data_dir, tmp_path):
-        catalog_dir = tmp_path / 'catalog_generate_test'
-        catalog = MediaCatalog(catalog_dir, create=True)
-        catalog.catalog(sample_data_dir)
+    def test_generate_catalog(self, sample_catalog, sample_data_dir):
+        catalog = sample_catalog
 
         # Check that every file has been added to the catalog
         expectedMediaFiles = 12
@@ -106,7 +104,6 @@ class TestMediaCatalog:
         shutil.move(os.path.join(albumDir, 'IMG_0731.JPG.bak'), os.path.join(albumDir, 'IMG_0731.JPG'))
         assert catalog.verify(local=True)
         assert catalog.verify(local=True, verifyChecksum=True)
-
 
     def test_query(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
@@ -184,6 +181,43 @@ class TestMediaCatalog:
         assert metadata['File:Directory'] == albumDir
         assert metadata['File:SHA256Sum'] == checksum
         assert metadata['File:MIMEType'] == 'image/jpeg'
+
+    def test_remove(self, sample_catalog, sample_data_dir):
+        catalog = sample_catalog
+        filename = 'IMG_0731.JPG'
+        albumDir = os.path.join(sample_data_dir, 'album1')
+        checksum = '69be5bae269d2142dc8b37e178af3fcad22ed4ca2c50c16d9fb44484e10d1723'
+
+        # Query to get the database record and metadata file
+        dbRecords, metadataAndPaths = catalog.query(checksum=checksum, filename=filename, directory=albumDir)
+        assert len(dbRecords) == 1
+        assert len(metadataAndPaths) == 1
+        assert dbRecords[0]['file_name'] == filename
+        assert os.path.normpath(dbRecords[0]['directory']) == albumDir
+        assert dbRecords[0]['checksum'] == checksum
+
+        # Remove from the catalog
+        assert catalog.remove(dbRecords) == 1
+
+        # Verify database record and metadata file were removed
+        assert not catalog.catalogDb.existsPath(filename, directory=albumDir)
+        assert not os.path.exists(metadataAndPaths[0][1])
+        with pytest.raises(KeyError):
+            dbRecords, metadataAndPaths = catalog.query(checksum=checksum, filename=filename, directory=albumDir)
+
+        # File should still exist on disk
+        assert os.path.exists(os.path.join(albumDir, filename))
+
+        # Duplicate file should still exist in the catalog
+        dbRecords, metadataAndPaths = catalog.query(checksum=checksum)
+        assert len(dbRecords) == 1
+        assert len(metadataAndPaths) == 1
+        assert dbRecords[0]['file_name'] == filename
+        assert os.path.split(os.path.normpath(dbRecords[0]['directory']))[1] == 'album1_duplicate'
+        metadata, metadataPath = metadataAndPaths[0]
+        assert metadata['File:FileName'] == filename
+        assert os.path.split(metadataAndPaths[0][0]['File:Directory'])[1] == 'album1_duplicate'
+        assert os.path.exists(metadataPath)
 
     def test_checksum(self, new_catalog, tmp_path):
         test_file = tmp_path / 'test.txt'

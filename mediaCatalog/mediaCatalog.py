@@ -318,7 +318,7 @@ class MediaCatalog(object):
             objectName = record['cloud_object_name']
             fullFilePath = os.path.join(directory, filename)
             percentComplete = i/len(records)*100
-            print(f'[{i}/{len(records)} ({percentComplete:.3f %})] Removing {fullFilePath} ({checksum})...')
+            print(f'[{i}/{len(records)} ({percentComplete:.3f} %)] Removing {fullFilePath} ({checksum})...')
             
             if objectName:
                 if cloudStorage:
@@ -327,12 +327,12 @@ class MediaCatalog(object):
                     raise RuntimeError('Cannot remove files from the catalog that are in the cloud! Remove from the cloud first.')
 
             self.metadataCatalog.delete(checksum, filename, directory, hostname)
-            self.catalogDb.delete(checksum, filename, directory, hostname)
+            self.catalogDb.delete([record])
             recordsRemoved.append(record)
 
         self.catalogDb.commit()
 
-        return recordsRemoved
+        return len(recordsRemoved)
 
     def checksum(self, filename: str) -> str:
         return self._checksum(filename, self.CHECKSUM_MODE)

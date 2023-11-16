@@ -295,6 +295,21 @@ class CatalogDatabase(object):
 
         return records
 
+    def delete(self, records: list) -> int:
+        ''' Delete records from the database
+
+            :param records: (list) List of records to delete
+            :returns int: Number of records deleted
+        '''
+
+        for record in records:
+            self.cursor.execute(
+                'DELETE FROM file WHERE id = ?',
+                (record['id'],)
+            )
+
+        return len(records)
+
     def existsChecksum(self, checksum):
         self.cursor.execute(
             'SELECT EXISTS(SELECT 1 FROM file WHERE checksum = ?)',
