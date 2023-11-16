@@ -11,9 +11,9 @@ if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
 	parser.add_argument('path', nargs='+', help='Remove files in this path and subpaths')
-	parser.add_argument('--local', action='store_true', help='Remove files locally')
+	parser.add_argument('--local', action='store_true', help='Remove from catalog')
 	parser.add_argument('--cloud', action='store_true', help='Remove files in the cloud')
-	parser.add_argument('--all', action='store_true', help='Remove files in all locations')
+	parser.add_argument('--all', action='store_true', help='Remove from catalog and cloud')
 	args = parser.parse_args()
 
 	logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')

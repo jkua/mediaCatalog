@@ -322,6 +322,7 @@ class MediaCatalog(object):
             
             if objectName:
                 dbRecords = self.catalogDb.read(checksum=checksum)
+                # Only remove from the cloud if there is only one record for this checksum
                 if len(dbRecords) == 1:
                     if cloudStorage:
                         cloudStorage.deleteFile(objectName)

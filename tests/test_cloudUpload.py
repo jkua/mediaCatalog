@@ -5,7 +5,7 @@ from mediaCatalog.mediaCatalog import MediaCatalog
 from mediaCatalog.googleCloudStorage import GoogleCloudStorage
 from mediaCatalog.cloudUploader import CloudUploader
 
-class TestMediaCatalog:
+class TestCloudUpload:
     @pytest.fixture
     def catalog_dir(self, tmp_path):
         return tmp_path / 'catalog'

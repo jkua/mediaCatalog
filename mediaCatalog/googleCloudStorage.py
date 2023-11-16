@@ -7,9 +7,10 @@ import google_crc32c
 from .cloudStorage import CloudStorage
 
 class GoogleCloudStorage(CloudStorage):
+    TRANSFER_CHECKSUM = 'crc32c'
     def __init__(self, projectId, bucketName):
-        if not projectId.strip():
-            raise Exception('projectId is not set!')
+        if not projectId or not projectId.strip():
+            raise ValueError('projectId is not set!')
         self.projectId = projectId
         CloudStorage.__init__(self, bucketName)
         
@@ -30,7 +31,6 @@ class GoogleCloudStorage(CloudStorage):
 
     def setBucket(self, bucketName):
         self.bucketName = bucketName
-        # self.bucket = self.storageClient.bucket(bucketName)
 
     def listFiles(self, prefix=None, delimiter=None):
         return self._listFiles(self.bucketName, prefix=prefix, delimiter=delimiter)
@@ -59,13 +59,13 @@ class GoogleCloudStorage(CloudStorage):
     def _downloadFile(self, bucketName, objectName, destinationPath):
         bucket = self.storageClient.bucket(bucketName)
         blob = bucket.blob(objectName)
-        blob.download_to_filename(destinationPath)
+        blob.download_to_filename(destinationPath, checksum=self.TRANSFER_CHECKSUM)
 
     def _uploadFile(self, sourcePath, bucketName, objectName, mimeType=None):
         bucket = self.storageClient.bucket(bucketName)
         blob = bucket.blob(objectName)
 
-        blob.upload_from_filename(sourcePath, content_type=mimeType, checksum='crc32c')
+        blob.upload_from_filename(sourcePath, content_type=mimeType, checksum=self.TRANSFER_CHECKSUM)
 
     def _deleteFile(self, bucketName, objectName):
         bucket = self.storageClient.bucket(bucketName)
