@@ -70,7 +70,7 @@ class MediaCatalog(object):
     def _createConfig(self):
         self.config = {'cloudProject': '', 'defaultCloudBucket': '', 'cloudObjectPrefix': self.DEFAULT_CLOUD_OBJECT_PREFIX}
         with open(self.configPath, 'w') as f:
-            yaml.dump(self.config, f)
+            yaml.dump(self.config, f, sort_keys=False)
 
     def _createCatalog(self):
         # Create the catalog folder
