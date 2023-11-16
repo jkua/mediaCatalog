@@ -127,3 +127,6 @@ class TestGoogleCloudStorage:
         # Get exception if we try to delete a file that doesn't exist
         with pytest.raises(Exception):
             cloudStorage.deleteFile(checksum)
+
+        # Clean up - delete bucket
+        cloudStorage.deleteBucket(bucketName)
