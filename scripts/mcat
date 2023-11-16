@@ -3,7 +3,7 @@
 import sys
 import subprocess
 
-COMMANDS = ['catalog', 'query', 'verify', 'getMetadata', 'cloudUpload', 'cloudDownload']
+COMMANDS = ['catalog', 'query', 'verify', 'remove', 'getMetadata', 'cloudUpload', 'cloudDownload']
 if __name__=='__main__':
     if sys.argv[1] in ('-h', '--help'):
         print('\n    mcat: media cataloging tool')
@@ -20,16 +20,5 @@ if __name__=='__main__':
         print(f'command must be one of {COMMANDS}')
         sys.exit(1)
 
-    if command == 'catalog':
-        subprocess.run(['mcat-catalog.py'] + args)
-    elif command == 'query':
-        subprocess.run(['mcat-query.py'] + args)
-    elif command == 'verify':
-        subprocess.run(['mcat-verify.py'] + args)
-    elif command == 'getMetadata':
-        subprocess.run(['mcat-getMetadata.py'] + args)
-    elif command == 'cloudUpload':
-        subprocess.run(['mcat-cloudUpload.py'] + args)
-    elif command == 'cloudDownload':
-        subprocess.run(['mcat-cloudDownload.py'] + args)
+    subprocess.run([f'mcat-{command}.py'] + args)
         

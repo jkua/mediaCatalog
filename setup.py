@@ -17,7 +17,8 @@ setup(
         'scripts/mcat',
         'scripts/mcat-catalog.py', 
         'scripts/mcat-query.py',
-        'scripts/mcat-verify.py', 
+        'scripts/mcat-verify.py',
+        'scripts/mcat-remove.py', 
         'scripts/mcat-cloudUpload.py', 
         'scripts/mcat-cloudDownload.py',
         'scripts/mcat-getMetadata.py'

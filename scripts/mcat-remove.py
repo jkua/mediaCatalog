@@ -11,21 +11,14 @@ if __name__=='__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--catalog', '-c', required=True, help='Path to catalog')
 	parser.add_argument('path', nargs='+', help='Remove files in this path and subpaths')
-	parser.add_argument('--local', action='store_true', help='Remove from catalog')
-	parser.add_argument('--cloud', action='store_true', help='Remove files in the cloud')
-	parser.add_argument('--all', action='store_true', help='Remove from catalog and cloud')
+	parser.add_argument('--dryrun', '-d', action='store_true', help='Don\'t actually remove files')
 	args = parser.parse_args()
 
 	logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
 	args.path = [os.path.abspath(path) for path in args.path]
-	if args.all:
-		args.local = True
-		args.cloud = True
-	if not args.local and not args.cloud:
-		raise Exception('Must specify at least one of --local or --cloud')
-
+	
 	with MediaCatalog(args.catalog) as catalog:
-		if args.cloud:
+		if catalog.config['cloudProject'] and catalog.config['defaultCloudBucket']:
 			cloudStorage = GoogleCloudStorage(catalog.config['cloudProject'], catalog.config['defaultCloudBucket'])
 		else:
 			cloudStorage = None
@@ -53,6 +46,11 @@ if __name__=='__main__':
 			print(f'{i}) {record["directory"]}{record["file_name"]}')
 		
 		print(f'\nTotal files to remove: {len(dbRecordsToRemove)}')
+
+		if args.dryrun:
+			print('\n*** DRY RUN - NO FILES REMOVED ***')
+			import sys; sys.exit(0)
+
 		while True:
 			response = input("Are you sure you want to delete these files? Enter the word DELETE to continue: ")
 			if response.upper() == 'DELETE':
