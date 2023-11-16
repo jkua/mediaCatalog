@@ -182,6 +182,26 @@ class TestMediaCatalog:
         assert metadata['File:SHA256Sum'] == checksum
         assert metadata['File:MIMEType'] == 'image/jpeg'
 
+        # Query by directory
+        dbRecords, metadataAndPaths = catalog.query(directory=albumDir)
+        assert len(dbRecords) == 6
+        assert len(metadataAndPaths) == 6
+
+        # Query by directory wildcard
+        dbRecords, metadataAndPaths = catalog.query(directory=albumDir+'*')
+        assert len(dbRecords) == 12
+        assert len(metadataAndPaths) == 12
+
+        # Query by filename wildcard 1
+        dbRecords, metadataAndPaths = catalog.query(filename='IMG_*')
+        assert len(dbRecords) == 8
+        assert len(metadataAndPaths) == 8
+
+        # Query by filename wildcard 2
+        dbRecords, metadataAndPaths = catalog.query(filename='*.CR3')
+        assert len(dbRecords) == 4
+        assert len(metadataAndPaths) == 4
+
     def test_remove(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
         filename = 'IMG_0731.JPG'
