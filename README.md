@@ -17,6 +17,10 @@
 * Add files to catalog: `mcat catalog -c <catalog path> <path1 to process> <path2 to process> ...`
 * Query catalog by path (add `-m` flag to display metadata): `mcat query -c <catalog path> -p <path>`
 * Query catalog by checksum: `mcat query -c <catalog path> -s <checksum>`
+* Query catalog by directory (supports wildcards): `mcat query -c <catalog path> -d <directory>`
+* Remove file from catalog (and cloud): `mcat remove -c <catalog path> -p <path to remove>`
+* Remove files in a directory (use a wildcard to remove subdirectories as well): `mcat remove -c <catalog path> -d <directory>`
+* Verify files (local and/or cloud) against the catalog: `mcat verify -c <catalog path> -p <specific path> [--local, --cloud, --all]`
 
 ### Cloud
 Prior to executing cloud operations, set the following cloud parameters in `<catalog_path>/config.yaml`:
