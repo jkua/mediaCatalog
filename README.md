@@ -12,16 +12,27 @@
 2. `pytest tests`
 
 ## Operation
-### Add files to catalog (first time add `-n` to create a new catalog)
-`./catalog.py -c <catalog path> -p <path to process>`
+### Catalog
+#### Add files to catalog (first time add `-n` to create a new catalog)
+`mcat catalog -c <catalog path> -p <path to process>`
 
-### Query catalog (add `-m` flag to display metadata)
-`./queryCatalog.py -c <catalog path> -p <path>`
-`./queryCatalog.py -c <catalog path> -s <checksum>`
+#### Query catalog (add `-m` flag to display metadata)
+`mcat query -c <catalog path> -p <path>`
+`mcat query -c <catalog path> -s <checksum>`
 
-### Upload files to the cloud
-`./cloudUpload.py -c <catalog path>`
+### Cloud
+Prior to executing cloud operations, set the following cloud parameters in `<catalog_path>/config.yaml`:
+1. `cloudProject`
+2. `defaultCloudBucket`
+3. `cloudObjectPrefix`
+#### Upload files to the cloud
+`mcat cloudUpload -c <catalog path>`
 
-### Download file from the cloud
-`./cloudDownload.py -c <catalog path> <checksum> <destination>`
+#### Download file from the cloud
+`mcat cloudDownload -c <catalog path> <checksum> <destination>`
+
+### Tools
+### Directly extract and display metadata from a media file
+`mcat getMetadata <path>`
+
 

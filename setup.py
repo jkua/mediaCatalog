@@ -14,12 +14,13 @@ setup(
         'google-crc32c'
     ],
     scripts=[
-        'scripts/catalog.py', 
-        'scripts/queryCatalog.py',
-        'scripts/verifyCatalog.py', 
-        'scripts/cloudUpload.py', 
-        'scripts/cloudDownload.py',
-        'scripts/getMetadata.py'
+        'scripts/mcat',
+        'scripts/mcat-catalog.py', 
+        'scripts/mcat-query.py',
+        'scripts/mcat-verify.py', 
+        'scripts/mcat-cloudUpload.py', 
+        'scripts/mcat-cloudDownload.py',
+        'scripts/mcat-getMetadata.py'
     ],
     author='John Kua',
     author_email='john@kua.fm',
