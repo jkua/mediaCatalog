@@ -452,8 +452,61 @@ class CatalogDatabase(object):
 
         return records[0][0]
 
-    def getFileCount(self):
-        self.cursor.execute('SELECT COUNT(checksum) FROM file')
+    def getFileCount(self, mode='all', deviceId=None, mimeTypeId=None):
+        validModes = ['all', 'cloud', 'unique']
+        if mode not in validModes:
+            raise ValueError(f'Invalid mode ({mode})! Valid modes are: {validModes}')
+        
+        tokens = []
+        values = []
+        if mode == 'all':
+            command = 'SELECT COUNT(id) FROM file'
+        elif mode == 'cloud':
+            command = 'SELECT COUNT(DISTINCT cloud_object_name) FROM file'
+            tokens.append('cloud_storage_id IS NOT NULL')
+        elif mode == 'unique':
+            command = 'SELECT COUNT(DISTINCT checksum) FROM file'
+        
+        if deviceId:
+            tokens.append('capture_device_id = ?')
+            values.append(deviceId)
+        if mimeTypeId:
+            tokens.append('file_mime_type_id = ?')
+            values.append(mimeTypeId)
+        if tokens:
+            command += ' WHERE ' + ' AND '.join(tokens)
+        
+        self.cursor.execute(command, values)
+        records = self.cursor.fetchall()
+        return records[0][0]
+
+    def getTotalFileSize(self, mode='all', deviceId=None, mimeTypeId=None):
+        validModes = ['all', 'cloud', 'unique']
+        if mode not in validModes:
+            raise ValueError(f'Invalid mode ({mode})! Valid modes are: {validModes}')
+
+        tokens = []
+        values = []
+        if mode == 'all':
+            command = 'SELECT file_size FROM file'
+        elif mode == 'unique':
+            command = 'SELECT DISTINCT checksum, file_size FROM file'
+        elif mode == 'cloud':    
+            command = 'SELECT DISTINCT cloud_object_name, file_size FROM file'
+            tokens.append('cloud_object_name IS NOT NULL')
+        
+        if deviceId:
+            tokens.append('capture_device_id = ?')
+            values.append(deviceId)
+        if mimeTypeId:
+            tokens.append('file_mime_type_id = ?')
+            values.append(mimeTypeId)
+        if tokens:
+            command += ' WHERE ' + ' AND '.join(tokens)
+
+        command = f'SELECT SUM(file_size) FROM ({command})'
+
+        self.cursor.execute(command, values)
         records = self.cursor.fetchall()
         return records[0][0]
 
@@ -468,6 +521,16 @@ class CatalogDatabase(object):
                 WHERE cloud_storage_id IS NULL
             '''
         )
+        records = self.cursor.fetchall()
+        return records
+
+    def getMimeTypes(self):
+        self.cursor.execute('SELECT id, type FROM mime_type')
+        records = self.cursor.fetchall()
+        return records
+
+    def getCaptureDevices(self):
+        self.cursor.execute('SELECT id, make, model, serial_number FROM capture_device')
         records = self.cursor.fetchall()
         return records
 

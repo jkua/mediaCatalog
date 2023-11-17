@@ -340,6 +340,63 @@ class MediaCatalog(object):
     def checksum(self, filename: str) -> str:
         return self._checksum(filename, self.CHECKSUM_MODE)
 
+    def printStats(self):
+        fileCount = {}
+        fileSize = {}
+        for mode in ['all', 'unique', 'cloud']:
+            fileCount[mode] = self.catalogDb.getFileCount(mode=mode)
+            fileSize[mode] = self.catalogDb.getTotalFileSize(mode=mode)
+        fileCountNotInCloud = fileCount['unique'] - fileCount['cloud']
+        fileSizeNotInCloud = fileSize['unique'] - fileSize['cloud']
+        BYTES_PER_GB = 2**30
+        print(f'\nStats for catalog {self.catalogPath}')
+        print('-----------------------------------------')
+        print(f"Files in catalog:   {fileCount['all']:7d} ({fileSize['all']/BYTES_PER_GB:.3f} GB)")
+        # print(f'Missing local files: {len(missingFiles)} ({}) GB')
+        print(f"Unique files:       {fileCount['unique']:7d} ({fileSize['unique']/BYTES_PER_GB:.3f} GB)")
+        print(f"Files in cloud:     {fileCount['cloud']:7d} ({fileSize['cloud']/BYTES_PER_GB:.3f} GB)")
+        print(f"Files not in cloud: {fileCountNotInCloud:7d} ({fileSizeNotInCloud/BYTES_PER_GB:.3f} GB)")
+
+        # Files by capture device
+        deviceRecords = self.catalogDb.getCaptureDevices()
+        results = []
+        for deviceId, make, model, serialnumber in deviceRecords:
+            fileCount = self.catalogDb.getFileCount(deviceId=deviceId)
+            fileSize = self.catalogDb.getTotalFileSize(deviceId=deviceId)
+            
+            if model.startswith(make) or \
+                make.lower().startswith('eastman') or \
+                make.lower().startswith('nikon corporation'):
+                makeModel = model
+            elif make.lower().startswith('casio') or \
+                make.lower().startswith('olympus'):
+                makeModel = f"{make.split(' ')[0]} {model}"
+            else:
+                makeModel = f"{make} {model}"
+            if serialnumber:
+                makeModel += f' ({serialnumber})'
+            results.append((makeModel, fileCount, fileSize))
+        results.sort()
+        
+        print('\nFiles by capture device')
+        print('-----------------------')
+        for makeModel, fileCount, fileSize in results:
+            print(f'{makeModel[:30]:30}: {fileCount:7d} ({fileSize/BYTES_PER_GB:.3f} GB)')
+
+        # Files by MIME type
+        mimeTypeRecords = self.catalogDb.getMimeTypes()
+        results = []
+        for mimeTypeId, mimeType in mimeTypeRecords:
+            fileCount = self.catalogDb.getFileCount(mimeTypeId=mimeTypeId)
+            fileSize = self.catalogDb.getTotalFileSize(mimeTypeId=mimeTypeId)
+            results.append((mimeType, fileCount, fileSize))
+
+        results.sort()
+        print('\nFiles by MIME type')
+        print('------------------')
+        for mimeType, fileCount, fileSize in results:
+            print(f'{mimeType:21}: {fileCount:7d} ({fileSize/BYTES_PER_GB:.3f} GB)')      
+
     @classmethod
     def _getMetadata(self, filenames: list) -> list:
         return getMetadata(filenames)

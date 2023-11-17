@@ -3,7 +3,7 @@
 import sys
 import subprocess
 
-COMMANDS = ['catalog', 'query', 'verify', 'remove', 'getMetadata', 'cloudUpload', 'cloudDownload']
+COMMANDS = ['catalog', 'query', 'verify', 'remove', 'stats', 'getMetadata', 'cloudUpload', 'cloudDownload']
 if __name__=='__main__':
     if sys.argv[1] in ('-h', '--help'):
         print('\n    mcat: media cataloging tool')
