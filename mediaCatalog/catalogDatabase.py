@@ -6,7 +6,7 @@ import os
 from .utils import getPreciseCaptureTimeFromExif
 
 class CatalogDatabase(object):
-    SCHEMA_VERSION = Version('0.1.0')
+    SCHEMA_VERSION = Version('1.0.0')
     MIN_SCHEMA_VERSION = Version('0.1.0')
 
     def __init__(self, dbPath):
