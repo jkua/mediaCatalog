@@ -9,3 +9,4 @@
 9. Add XMP files? Changeable, though. Same for PSD files.
 10. PDFs?
 11. Add removal warning for cloud objects in Archive storage class
+12. Upload test data to a public bucket for other developers/users
