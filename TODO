@@ -1,0 +1,8 @@
+1. Add config for default catalog location
+2. Add config for default photo search paths
+3. Add config for paths to exclude from search
+4. Be able to update the catalog for moved paths
+4. Add cronjob for cataloging
+5. Add cronjob for verification - short (presence only)/full (with checksum verification)
+6. Add GPS files (GPX, etc.)
+7. Add XMP files? Changeable, though. Same for PSD files.

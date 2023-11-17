@@ -1,4 +1,27 @@
 # mediaCatalog
+## Overview
+This generates a catalog to track, as well as backup to a cloud archive, 
+*media files*. The core concept here is that these media files are 
+*immutable objects* and therefore the catalog only needs to track a single 
+version of those objects, even if there are multiple copies. This catalog can 
+be used to backup these files to a cloud archive as well as determine if files 
+are missing or corrupt. If a cloud archive is used, this can be used to restore 
+erroneous files.
+
+## Technical Details
+1. Each file has a SHA256 checksum computed and logged for validation purposes
+2. If a file is present in multiple locations, the database logs multiple entries
+3. Only one copy of a file is stored in the cloud archive, named with the checksum
+4. `exiftool` is used to extract a set of metadata from each file, including 
+the MIME type
+5. The MIME type is used to determine if the file is of a media type 
+(image/video/audio/text*). In this way, file extensions are irrelevant
+6. The catalog consists of a small database which logs checksums, local file 
+paths, MIME types, file sizes, capture devices, and cloud locations
+7. In addition, there is a metadata store, where the information extracted by 
+`exiftool` is stored as a set of JSON files
+8. The metadata store is implemented as a hash directory tree utilizing the 
+checksum value, with collision handling.
 
 ## Installation (MacOS)
 1. `brew install exiftool`
