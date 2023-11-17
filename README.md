@@ -13,22 +13,43 @@ erroneous files.
 2. If a file is present in multiple locations, the database logs multiple entries
 3. Only one copy of a file is stored in the cloud archive, named with the checksum
 4. `exiftool` is used to extract a set of metadata from each file, including 
-the MIME type
+    the MIME type
 5. The MIME type is used to determine if the file is of a media type 
-(image/video/audio/text*). In this way, file extensions are irrelevant
+    (image/video/audio/text*). In this way, file extensions are irrelevant
 6. The catalog consists of a small database which logs checksums, local file 
-paths, MIME types, file sizes, capture devices, and cloud locations
+    paths, MIME types, file sizes, capture devices, and cloud locations
 7. In addition, there is a metadata store, where the information extracted by 
-`exiftool` is stored as a set of JSON files
+    `exiftool` is stored as a set of JSON files
 8. The metadata store is implemented as a hash directory tree utilizing the 
-checksum value, with collision handling.
+    checksum value, with collision handling.
 
 ## Installation (MacOS)
 1. `brew install exiftool`
 2. `pip3 install -r requirements.txt`
 3. `pip3 install -e .`
 
-### Run tests
+## Cloud setup
+Currently the tool only supports Google Cloud for file archival. Create a 
+bucket to archive your media files. You will need put the following 
+information in the catalog's `config.yaml`:
+1. `cloudProject`: Google Cloud project name
+2. `defaultCloudBucket`: Google Cloud bucket for the media archive
+3. `cloudObjectPrefix`: The prefix (psuedo-directory) that will be appended
+    to each cloud object name. The default is `file`, but this can be 
+    whatever you want
+
+### Storage classes and Lifecycle policy
+Currently the tool does not manage [storage classes](https://cloud.google.com/storage/docs/storage-classes). 
+It is recommended that the [default storage class](https://cloud.google.com/storage/docs/changing-default-storage-class) 
+be *standard* so that any accidental uploads can be removed without running 
+afoul of minimum storage durations. If you wish to save on storage costs, it is 
+recommended to add a [lifecycle rule](https://cloud.google.com/storage/docs/lifecycle) 
+to change the storage class of a file to a colder class (nearline, coldline, 
+archive) after a specified time after upload, e.g. 7-30 days, depending on your 
+workflow. Be aware that these colder classes have increasing minimum storage 
+durations and retrieval fees.
+
+## Run tests
 1. Create `config.yaml` in `tests/` with your *test values* for cloud storage: `cloudProject`, `defaultCloudBucket`, `cloudObjectPrefix`
     1. `defaultCloudBucket` should *NOT* be your production bucket
     2. `cloudObjectPrefix` should *NOT* be your production value (typically `file`)
