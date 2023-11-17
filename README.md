@@ -12,18 +12,26 @@ erroneous files.
 1. Each file has a SHA256 checksum computed and logged for validation purposes
 2. If a file is present in multiple locations, the database logs multiple entries
 3. Only one copy of a file is stored in the cloud archive, named with the checksum
-4. `exiftool` is used to extract a set of metadata from each file, including 
-    the MIME type
+4. [exiftool](https://exiftool.org/) is used to extract a set of metadata from 
+    each file, including the MIME type
 5. The MIME type is used to determine if the file is of a media type 
     (image/video/audio/text*). In this way, file extensions are irrelevant
-6. The catalog consists of a small database which logs checksums, local file 
-    paths, MIME types, file sizes, capture devices, and cloud locations
-7. In addition, there is a metadata store, where the information extracted by 
-    `exiftool` is stored as a set of JSON files
-8. The metadata store is implemented as a hash directory tree utilizing the 
+6. The catalog consists of:
+    1. A small database which logs checksums, local file paths, MIME types, 
+        file sizes, capture devices, and cloud locations
+    2. A metadata store, where the information extracted by `exiftool` is 
+        stored as a set of JSON files
+7. The metadata store is implemented as a hash directory tree utilizing the 
     checksum value, with collision handling.
 
+\* This may change. Text files are useful for metadata, but their mutability 
+makes them problematic for this tool to track.
+
 ## Installation (MacOS)
+1. `brew install exiftool`
+2. `pip3 install .`
+
+### Developer Installation
 1. `brew install exiftool`
 2. `pip3 install -r requirements.txt`
 3. `pip3 install -e .`
@@ -37,6 +45,9 @@ information in the catalog's `config.yaml`:
 3. `cloudObjectPrefix`: The prefix (psuedo-directory) that will be appended
     to each cloud object name. The default is `file`, but this can be 
     whatever you want
+
+You will also need to [set up the Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc) 
+for the Google API Client.
 
 ### Storage classes and Lifecycle policy
 Currently the tool does not manage [storage classes](https://cloud.google.com/storage/docs/storage-classes). 
@@ -57,25 +68,31 @@ durations and retrieval fees.
 
 ## Operation
 ### Catalog
-* Create new catalog: `mcat catalog -c <catalog path> -n <path to process>`
-* Add files to catalog: `mcat catalog -c <catalog path> <path1 to process> <path2 to process> ...`
-* Query catalog by path (add `-m` flag to display metadata): `mcat query -c <catalog path> -p <path>`
-* Query catalog by checksum: `mcat query -c <catalog path> -s <checksum>`
-* Query catalog by directory (supports wildcards): `mcat query -c <catalog path> -d <directory>`
-* Remove file from catalog (and cloud): `mcat remove -c <catalog path> -p <path to remove>`
-* Remove files in a directory (use a wildcard to remove subdirectories as well): `mcat remove -c <catalog path> -d <directory>`
-* Verify files (local and/or cloud) against the catalog: `mcat verify -c <catalog path> -p <specific path> [--local, --cloud, --all]`
+* Create new catalog: 
+    * `mcat catalog -c <catalog path> -n <path to process>`
+* Add files to catalog: 
+    * `mcat catalog -c <catalog path> <path1 to process> <path2 to process> ...`
+* Query catalog by path (add `-m` flag to display metadata): 
+    * `mcat query -c <catalog path> -p <path>`
+* Query catalog by checksum: 
+    * `mcat query -c <catalog path> -s <checksum>`
+* Query catalog by directory (supports wildcards): 
+    * `mcat query -c <catalog path> -d <directory>`
+* Remove file from catalog (and cloud): 
+    * `mcat remove -c <catalog path> -p <path to remove>`
+* Remove files in a directory (use a wildcard to remove subdirectories as well): 
+    * `mcat remove -c <catalog path> -d <directory>`
+* Verify files (local and/or cloud) against the catalog: 
+    * `mcat verify -c <catalog path> -p <specific path> [--local, --cloud, --all]`
 
 ### Cloud
-Prior to executing cloud operations, set the following cloud parameters in `<catalog_path>/config.yaml`:
-1. `cloudProject`
-2. `defaultCloudBucket`
-3. `cloudObjectPrefix`
-
-* Upload files to the cloud: `mcat cloudUpload -c <catalog path>`
-* Download file from the cloud: `mcat cloudDownload -c <catalog path> <checksum> <destination>`
+* Upload files to the cloud: 
+    * `mcat cloudUpload -c <catalog path>`
+* Download file from the cloud: 
+    * `mcat cloudDownload -c <catalog path> <checksum> <destination>`
 
 ### Tools
-* Directly extract and display metadata from a media file: `mcat getMetadata <path>`
+* Directly extract and display metadata from a media file: 
+    * `mcat getMetadata <path>`
 
 
