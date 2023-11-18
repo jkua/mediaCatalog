@@ -1,10 +1,11 @@
+import os
 import base64
 import struct
 
 from google.cloud import storage
 import google_crc32c
 
-from .cloudStorage import CloudStorage
+from .cloudStorage import CloudStorage, CloudStorageObjectMissingException, CloudStorageObjectSizeMismatchException, CloudStorageObjectChecksumMismatchException
 
 class GoogleCloudStorage(CloudStorage):
     TRANSFER_CHECKSUM = 'crc32c'
@@ -43,18 +44,28 @@ class GoogleCloudStorage(CloudStorage):
         bucket = self.storageClient.bucket(bucketName)
         return bucket.blob(objectName).exists()
 
-    def _validateFile(self, bucketName, objectName, sourcePath=None, checksum=None):
-        if checksum is None and sourcePath is None:
-            raise Exception('Either checksum or sourcePath must be set!')
+    def _validateFile(self, bucketName, objectName, fileSize=None, checksum=None, sourcePath=None):
         bucket = self.storageClient.bucket(bucketName)
         blob = bucket.blob(objectName)
+        
+        if not blob.exists():
+            raise CloudStorageObjectMissingException(bucketName, objectName)
+        
         blob.reload()
-        remoteChecksum = self._convertB64Crc32c(blob.crc32c)
-        if checksum:
-            localChecksum = checksum
-        else:
-            localChecksum = self._computeCrc32c(sourcePath)
-        return remoteChecksum == localChecksum
+
+        if sourcePath:
+            fileSize = os.stat(sourcePath).st_size
+            checksum = self._computeCrc32c(sourcePath)
+
+        if fileSize and blob.size != fileSize:
+            raise CloudStorageObjectSizeMismatchException(bucketName, objectName, fileSize, blob.size)
+
+        if checksum: 
+            remoteChecksum = self._convertB64Crc32c(blob.crc32c)
+            if remoteChecksum != checksum:
+                raise CloudStorageObjectChecksumMismatchException(bucketName, objectName, checksum, remoteChecksum)
+
+        return True
 
     def _downloadFile(self, bucketName, objectName, destinationPath):
         bucket = self.storageClient.bucket(bucketName)
@@ -76,6 +87,12 @@ class GoogleCloudStorage(CloudStorage):
         generationMatchPrecondition = blob.generation
 
         blob.delete(if_generation_match=generationMatchPrecondition)
+
+    def _getSize(self, bucketName, objectName):
+        bucket = self.storageClient.bucket(bucketName)
+        blob = bucket.blob(objectName)
+        blob.reload()
+        return blob.size
 
     def _getMimeType(self, bucketName, objectName):
         bucket = self.storageClient.bucket(bucketName)

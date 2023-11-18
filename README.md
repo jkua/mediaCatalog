@@ -78,6 +78,8 @@ durations and retrieval fees.
     * `mcat query -c <catalog path> -s <checksum>`
 * Query catalog by directory (supports wildcards): 
     * `mcat query -c <catalog path> -d <directory>`
+* Update paths after files are moved:
+    * `mcat move -c <catalog path> <old directory> <new directory>`
 * Remove file from catalog (and cloud): 
     * `mcat remove -c <catalog path> -p <path to remove>`
 * Remove files in a directory (use a wildcard to remove subdirectories as well): 

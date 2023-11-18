@@ -10,3 +10,4 @@
 10. PDFs?
 11. Add removal warning for cloud objects in Archive storage class
 12. Upload test data to a public bucket for other developers/users
+13. Metadata collision handling. Should we store separate copies for duplicate files? That's what currently happens. If not, how do we distinguish from a true hash collision - file name, file size, other metadata values?

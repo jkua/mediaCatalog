@@ -42,7 +42,7 @@ class TestCloudUpload:
             assert projectId == catalog.config['cloudProject']
             assert bucketName == catalog.config['defaultCloudBucket']
             assert objectName == os.path.join(catalog.config['cloudObjectPrefix'], record['checksum'])
-            assert cloudStorage.validateFile(objectName, sourcePath)
+            assert cloudStorage.validateFile(objectName, sourcePath=sourcePath)
             assert cloudStorage.getMimeType(objectName) == mimeType
 
         # Validate the last file uploaded by downloading it and comparing it to the original
@@ -59,9 +59,14 @@ class TestCloudUpload:
         assert not catalog.verify(cloudStorage=cloudStorage)
         assert not catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
 
-        # Upload the last file with a bad checksum - only checksum verification will fail
-        cloudStorage.uploadFile(os.path.join(sample_data_dir, 'album2_corrupt', '$MG_0119.JPG'), objectName, mimeType)
-        assert catalog.verify(cloudStorage=cloudStorage)
+        # Upload the last file with a bad checksum
+        data = open(sourcePath, 'rb').read()
+        corruptFile = tmp_path / 'corrupt_file'
+        with open(corruptFile, 'wb') as f:
+            f.write(data[::-1])
+        cloudStorage.uploadFile(corruptFile, objectName, mimeType)
+        # This will also fail because we always verify cloud checksums since we store them in the catalog
+        assert not catalog.verify(cloudStorage=cloudStorage)
         assert not catalog.verify(cloudStorage=cloudStorage, verifyChecksum=True)
 
         # Restore the last file

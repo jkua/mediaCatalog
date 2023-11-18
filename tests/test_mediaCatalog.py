@@ -92,11 +92,18 @@ class TestMediaCatalog:
         shutil.move(os.path.join(albumDir, 'IMG_0731.JPG'), os.path.join(albumDir, 'IMG_0731.JPG.bak'))
         assert not catalog.verify(local=True)
         assert not catalog.verify(local=True, verifyChecksum=True)
-        
-        # Truncate a file - verification without checksum verification should still pass
+
+        # Truncate a file - file size verification should fail
         with open(os.path.join(albumDir, 'IMG_0731.JPG'), 'wb') as f:
             data = open(os.path.join(albumDir, 'IMG_0731.JPG.bak'), 'rb').read()
             f.write(data[:len(data)//2])
+        assert not catalog.verify(local=True)
+        assert not catalog.verify(local=True, verifyChecksum=True)
+
+        # Generate a new file the same size as the original - checksum verification should fail
+        with open(os.path.join(albumDir, 'IMG_0731.JPG'), 'wb') as f:
+            data = open(os.path.join(albumDir, 'IMG_0731.JPG.bak'), 'rb').read()
+            f.write(data[::-1])
         assert catalog.verify(local=True)
         assert not catalog.verify(local=True, verifyChecksum=True)
 

@@ -1,6 +1,8 @@
 import logging
 import os
 
+from .cloudStorage import CloudStorageObjectMissingException, CloudStorageObjectSizeMismatchException, CloudStorageObjectChecksumMismatchException
+
 class CloudUploader(object):
 	def __init__(self, catalog, cloudStorage):
 		self.catalog = catalog
@@ -27,18 +29,16 @@ class CloudUploader(object):
 
 			uploadedPercentage = i/len(filesToUpload)*100
 			print(f'[{i}/{len(filesToUpload)} ({uploadedPercentage:.3f} %)] {sourcePath} -> {objectName}')
-			
-			if not self.cloudStorage.fileExists(objectName):
+
+			try:
+				self.cloudStorage.validateFile(objectName, sourcePath=sourcePath)
+			except CloudStorageObjectMissingException as e:
 				self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
 				uploadedFiles.append((sourcePath, objectName))
 			else:
 				print('    WARNING: Object already exists in the cloud!')
-				if self.cloudStorage.validateFile(objectName, sourcePath):
-					print('    Checksums match. Skipping upload.')
-					skippedFiles.append((sourcePath, objectName))
-				else:
-					skippedFiles.append((sourcePath, None))
-					raise Exception('Cloud object has a different checksum!')
+				print('    Checksums match. Skipping upload.')
+				skippedFiles.append((sourcePath, objectName))
 			
 			objectChecksum = self.cloudStorage.getChecksum(objectName)
 			self.catalogDb.setCloudStorage(checksum, 

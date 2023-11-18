@@ -8,7 +8,7 @@ import jsonlines
 
 from .metadataCatalogHDT import MetadataCatalogHDT
 from .catalogDatabase import CatalogDatabase
-from .cloudStorage import CloudStorage
+from .cloudStorage import CloudStorage, CloudStorageObjectMissingException, CloudStorageObjectSizeMismatchException, CloudStorageObjectChecksumMismatchException
 from .utils import md5sum, sha256sum, getMimeTypes, getMetadata, getAcoustid
 
 
@@ -239,35 +239,37 @@ class MediaCatalog(object):
         missingCloudFiles = []
         changedCloudFiles = []
         
-        for record in records:
+        for i, record in enumerate(records, 1):
+            if i % 1 == 0:
+                print(f'Verifying file {i}/{numFiles}...')
             filePath = os.path.join(record['directory'], record['file_name'])
             if local:
                 if os.path.exists(filePath):
-                    if verifyChecksum:
-                        checksum = self._checksum(filePath, self.CHECKSUM_MODE)
-                        if checksum == record['checksum']:
-                            foundLocalFiles.append(record)
-                        else:
-                            changedLocalFiles.append(record)
-                            print(f'[WARNING] Local file changed: {filePath}')
+                    if os.stat(filePath).st_size != record['file_size']:
+                        changedLocalFiles.append(record)
+                        print(f'[WARNING] Local file changed size: {filePath} ({record["file_size"]} -> {os.stat(filePath).st_size}))')
+                    elif verifyChecksum and self._checksum(filePath, self.CHECKSUM_MODE) != record['checksum']:
+                        changedLocalFiles.append(record)
+                        print(f'[WARNING] Local file changed: {filePath}')
                     else:
                         foundLocalFiles.append(record)
                 else:
                     missingLocalFiles.append(record)
                     print(f'Local file not found: {filePath}')
             if cloudStorage:
-                if cloudStorage.fileExists(record['cloud_object_name']):
-                    if verifyChecksum:
-                        if cloudStorage.validateFile(record['cloud_object_name'], checksum=record['cloud_object_checksum']):
-                            foundCloudFiles.append(record)
-                        else:
-                            changedCloudFiles.append(record)
-                            print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({filePath})')
-                    else:
-                        foundCloudFiles.append(record)
-                else:
+                try:
+                    cloudStorage.validateFile(record['cloud_object_name'], fileSize=record['file_size'], checksum=record['cloud_object_checksum'])
+                except CloudStorageObjectMissingException as e:
                     missingCloudFiles.append(record)
                     print(f'Cloud file not found: {record["cloud_object_name"]} ({filePath})')
+                except CloudStorageObjectSizeMismatchException as e:
+                    changedCloudFiles.append(record)
+                    print(f'[WARNING] Cloud file changed size: {record["cloud_object_name"]} ({filePath}) ({record["file_size"]} -> {e.actualSize})')
+                except CloudStorageObjectChecksumMismatchException as e:
+                    changedCloudFiles.append(record)
+                    print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({filePath}) ({record["cloud_object_checksum"]} -> {e.actualChecksum})')
+                else:
+                    foundCloudFiles.append(record)
 
         print('\nVerification complete!')
         print('======================')

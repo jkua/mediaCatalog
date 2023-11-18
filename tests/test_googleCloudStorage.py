@@ -4,6 +4,10 @@ import yaml
 import datetime
 from mediaCatalog.mediaCatalog import MediaCatalog
 from mediaCatalog.googleCloudStorage import GoogleCloudStorage
+from mediaCatalog.cloudStorage import (CloudStorage, 
+                                    CloudStorageObjectMissingException, 
+                                    CloudStorageObjectSizeMismatchException, 
+                                    CloudStorageObjectChecksumMismatchException)
 
 class TestGoogleCloudStorage:
     @pytest.fixture
@@ -76,6 +80,7 @@ class TestGoogleCloudStorage:
         albumDir = os.path.join(sample_data_dir, 'album1')
         mimeType = 'image/jpeg'
         checksum = '69be5bae269d2142dc8b37e178af3fcad22ed4ca2c50c16d9fb44484e10d1723'
+        objectName = 'file/' + checksum
         cloudChecksum = 1060211233
         sourcePath = os.path.join(albumDir, filename)
         downloadPath = tmp_path / 'cloud_download_test'
@@ -86,47 +91,61 @@ class TestGoogleCloudStorage:
         # Should get an empty file list
         assert not cloudStorage.listFiles()
 
+        # Get validation exception for a file that doesn't exist
+        with pytest.raises(CloudStorageObjectMissingException):
+            cloudStorage.validateFile(objectName)
+
         # Test checksum computation
         assert cloudStorage.computeChecksum(sourcePath) == cloudChecksum
 
         # Upload a file
-        cloudStorage.uploadFile(sourcePath, checksum, mimeType)
+        cloudStorage.uploadFile(sourcePath, objectName, mimeType)
 
         # Confirm file uploaded
-        assert cloudStorage.fileExists(checksum)
+        assert cloudStorage.fileExists(objectName)
         fileList = cloudStorage.listFiles()
-        assert checksum in fileList
+        assert objectName in fileList
+
+        # Get validation exception for bad file size
+        with pytest.raises(CloudStorageObjectSizeMismatchException):
+            cloudStorage.validateFile(objectName, fileSize=-1)
+
+        # Get validation exception for bad checksum
+        with pytest.raises(CloudStorageObjectChecksumMismatchException):
+            cloudStorage.validateFile(objectName, checksum=-1)
 
         # No exception if we try to upload a file that already exists
-        cloudStorage.uploadFile(sourcePath, checksum, mimeType)
+        cloudStorage.uploadFile(sourcePath, objectName, mimeType)
 
         # Get MIME type
-        assert cloudStorage.getMimeType(checksum) == mimeType
+        assert cloudStorage.getMimeType(objectName) == mimeType
 
         # Get checksum
-        assert cloudStorage.getChecksum(checksum) == cloudChecksum
+        assert cloudStorage.getChecksum(objectName) == cloudChecksum
 
         # Validate file
-        assert cloudStorage.validateFile(checksum, sourcePath=sourcePath)
-        assert cloudStorage.validateFile(checksum, checksum=cloudChecksum)
-        assert cloudStorage.validateFile(checksum, sourcePath=sourcePath, checksum=cloudChecksum)
-
+        fileSize = os.stat(sourcePath).st_size
+        assert cloudStorage.validateFile(objectName, fileSize=fileSize)
+        assert cloudStorage.validateFile(objectName, checksum=cloudChecksum)
+        assert cloudStorage.validateFile(objectName, fileSize=fileSize, checksum=cloudChecksum)
+        assert cloudStorage.validateFile(objectName, sourcePath=sourcePath)
+        
         # Download a file
-        cloudStorage.downloadFile(checksum, downloadPath)
+        cloudStorage.downloadFile(objectName, downloadPath)
 
         # Confirm file downloaded
         assert os.path.exists(downloadPath)
         assert cloudStorage.computeChecksum(downloadPath) == cloudChecksum
 
         # Delete a file
-        cloudStorage.deleteFile(checksum)
+        cloudStorage.deleteFile(objectName)
 
         # Confirm file deleted
         assert checksum not in cloudStorage.listFiles()
 
         # Get exception if we try to delete a file that doesn't exist
         with pytest.raises(Exception):
-            cloudStorage.deleteFile(checksum)
+            cloudStorage.deleteFile(objectName)
 
         # Clean up - delete bucket
         cloudStorage.deleteBucket(bucketName)
