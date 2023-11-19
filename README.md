@@ -27,9 +27,13 @@ erroneous files.
 \* This may change. Text files are useful for metadata, but their mutability 
 makes them problematic for this tool to track.
 
-## Installation (MacOS)
+## Installation 
+### MacOS
 1. `brew install exiftool`
 2. `pip3 install .`
+### Debian/Ubuntu
+1. `sudo apt install libimage-exiftool-perl`
+
 
 ### Developer Installation
 1. `brew install exiftool`

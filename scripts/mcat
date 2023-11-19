@@ -5,7 +5,7 @@ import subprocess
 
 COMMANDS = ['catalog', 'query', 'verify', 'move', 'remove', 'stats', 'getMetadata', 'cloudUpload', 'cloudDownload']
 if __name__=='__main__':
-    if sys.argv[1] in ('-h', '--help'):
+    if len(sys.argv) == 1 or sys.argv[1] in ('-h', '--help'):
         print('\n    mcat: media cataloging tool')
         print(f'\n    Usage: {sys.argv[0]} COMMAND [command args]')
         print('\n    Commands:')
