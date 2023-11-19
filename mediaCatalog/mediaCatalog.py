@@ -414,11 +414,11 @@ class MediaCatalog(object):
             fileCount = self.catalogDb.getFileCount(deviceId=deviceId)
             fileSize = self.catalogDb.getTotalFileSize(deviceId=deviceId)
             
-            if model.startswith(make) or \
+            if model and model.startswith(make) or \
                 make.lower().startswith('eastman') or \
                 make.lower().startswith('nikon corporation'):
                 makeModel = model
-            elif make.lower().startswith('casio') or \
+            elif make and make.lower().startswith('casio') or \
                 make.lower().startswith('olympus'):
                 makeModel = f"{make.split(' ')[0]} {model}"
             else:
