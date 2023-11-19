@@ -239,8 +239,6 @@ class MediaCatalog(object):
         missingCloudFiles = []
         changedCloudFiles = []
 
-        import time
-        startTime = time.time()
         if cloudStorage:
             print(f'\nDownloading cloud object metadata... this takes a minute or two...')
             blobData = cloudStorage.listFiles(extended=True)
@@ -283,7 +281,6 @@ class MediaCatalog(object):
                         print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({record["cloud_object_checksum"]} -> {cloudChecksum})')
                         continue
                 foundCloudFiles.append(record)
-                print(f'Elapsed time: {time.time() - startTime:.3f} s')
 
         print('\nVerification complete!')
         print('======================')
