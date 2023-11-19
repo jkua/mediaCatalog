@@ -209,6 +209,23 @@ class TestMediaCatalog:
         assert len(dbRecords) == 4
         assert len(metadataAndPaths) == 4
 
+    def test_move(self, sample_catalog, sample_data_dir):
+        catalog = sample_catalog
+        albumDir = os.path.join(sample_data_dir, 'album1')
+        newAlbumDir = os.path.join(sample_data_dir, 'album1_new')
+        shutil.copytree(albumDir, newAlbumDir)
+        shutil.rmtree(albumDir)
+
+        oldRecords = catalog.catalogDb.read(directory=albumDir + '/*')
+        assert catalog.move(albumDir, newAlbumDir) == len(oldRecords)
+        newRecords = catalog.catalogDb.read(directory=newAlbumDir + '/*')
+        assert len(newRecords) == len(oldRecords)
+        for newRecord in newRecords:
+            assert newRecord['directory'] == newAlbumDir + '/'
+            metadata, metadataPath = catalog.metadataCatalog.read(newRecord['checksum'], filename=newRecord['file_name'], directory=newRecord['directory'])
+            assert metadata['File:Directory'] == newAlbumDir
+            assert metadata['SourceFile'] == os.path.join(newAlbumDir, newRecord['file_name'])
+
     def test_remove(self, sample_catalog, sample_data_dir):
         catalog = sample_catalog
         filename = 'IMG_0731.JPG'

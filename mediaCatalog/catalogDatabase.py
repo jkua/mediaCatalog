@@ -295,6 +295,21 @@ class CatalogDatabase(object):
 
         return records
 
+    def update(self, record, fields):
+        ''' Update a record in the database'''
+
+        command = 'UPDATE file SET '
+        tokens = []
+        values = []
+        for field in fields:
+            tokens.append(f'{field}=?')
+            values.append(record[field])
+
+        command += ', '.join(tokens) + ' WHERE id=?'
+        values.append(record['id'])
+
+        self.cursor.execute(command, values)
+
     def delete(self, records: list) -> int:
         ''' Delete records from the database
 

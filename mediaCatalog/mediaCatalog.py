@@ -313,6 +313,43 @@ class MediaCatalog(object):
                 metadataAndPaths.extend(currentMetadataAndPaths)
         return dbRecords, metadataAndPaths
 
+    def move(self, oldDirectory, newDirectory):
+        ''' Moves files in the catalog from oldDirectory to newDirectory. 
+            Validates the checksum amd updates the catalog and metadata catalog.
+        
+            :param oldDirectory: (str) Move files from this directory
+            :param newDirectory: (str) Move files to this directory
+            :returns: (int) Number of files moved
+        '''
+        print(f'Moving files from {oldDirectory} to {newDirectory}...')
+        oldDirectory = os.path.abspath(oldDirectory)
+        newDirectory = os.path.abspath(newDirectory)
+        records = self.catalogDb.read(directory=oldDirectory + '/*')
+        print(f'Found {len(records)} files in database to move...')
+        for i, record in enumerate(records, 1):
+            filename = record['file_name']
+            directory = os.path.join(newDirectory, record['directory'][len(oldDirectory):-1])
+            fullPath = os.path.join(directory, filename)
+            percentComplete = i/len(records)*100
+            print(f'[{i}/{len(records)} ({percentComplete:.3f} %)] {os.path.join(oldDirectory, filename)} -> {fullPath}...')
+            
+            if not os.path.exists(fullPath):
+                raise FileNotFoundError(f'File not found: {fullPath}')
+            
+            checksum = self._checksum(fullPath, self.CHECKSUM_MODE)
+            if checksum != record['checksum']:
+                raise RuntimeError(f'Checksum mismatch for {fullPath} ({checksum} != {record["checksum"]})!')
+            
+            record = dict(record)
+            record['directory'] = directory
+            self.catalogDb.update(record, fields=['directory'])
+
+            self.metadataCatalog.move(record['checksum'], filename, oldDirectory, newDirectory)
+            
+        self.catalogDb.commit()
+
+        return len(records)
+
     def remove(self, records, cloudStorage=None):
         ''' Removes files from the catalog and deletes the metadata files. 
             Typically called with the output of query(). Checks to see if

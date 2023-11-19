@@ -32,6 +32,7 @@ class MetadataCatalogHDT(MetadataCatalog):
             raise ValueError(f'Invalid hash mode: {hashMode}! Must be one of {self.VALID_HASH_MODES}')
         self.hashMode = hashMode
         self.hashKey = f'File:{hashMode}Sum'
+        self.sourceFileKey = 'SourceFile'
         self.filenameKey = 'File:FileName'
         self.directoryKey = 'File:Directory'
         self.hostnameKey = 'HostName'
@@ -104,6 +105,24 @@ class MetadataCatalogHDT(MetadataCatalog):
                 logging.warning(f'Multiple ({len(outputMetadata)}) metadata entries found for criteria! Returning first')
 
         return outputMetadata[0]
+
+    def move(self, hash_, filename, oldDirectory, newDirectory):
+        ''' Update metadata for a file to reflect a new directory location
+            :param hash_: (str) The hash of the file to move
+            :param filename: (str) The filename of the file to move
+            :param oldDirectory: (str) The old directory of the file to move
+            :param newDirectory: (str) The new directory of the file to move
+            :returns: (str) The path of the updated metadata file
+        '''
+
+        metadata, path = self.read(hash_, filename=filename, directory=oldDirectory)
+        if not metadata:
+            raise Exception('No metadata found for file!')
+        
+        metadata[self.sourceFileKey] = os.path.join(newDirectory, filename)
+        metadata[self.directoryKey] = newDirectory
+
+        newPath = self.write(metadata, updateMode=True)
 
     def delete(self, hash_, filename=None, directory=None, hostname=None, all=False):
         ''' Deletes metadata for a file. If all is True, all metadata matching the query is deleted.
