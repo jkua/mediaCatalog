@@ -47,8 +47,14 @@ class CloudStorage(object):
     def setBucket(self, bucketName):
         raise NotImplementedError
 
-    def listFiles(self, prefix=None):
-        self._listFiles(self.bucketName, prefix)
+    def listFiles(self, prefix=None, extended=False):
+        ''' List the files in the cloud, optionally filtering by prefix.
+
+            :param prefix: (str) The prefix to filter by
+            :param extended: (bool) If True, return a list of tuples with (objectName, size, checksum)
+            :returns: A list of object names or a list of tuples with (objectName, size, checksum)
+        '''
+        self._listFiles(self.bucketName, prefix, extended)
 
     def fileExists(self, objectName):
         return self._fileExists(self.bucketName, objectName)

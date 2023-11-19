@@ -33,11 +33,14 @@ class GoogleCloudStorage(CloudStorage):
     def setBucket(self, bucketName):
         self.bucketName = bucketName
 
-    def listFiles(self, prefix=None, delimiter=None):
-        return self._listFiles(self.bucketName, prefix=prefix, delimiter=delimiter)
+    def listFiles(self, prefix=None, delimiter=None, extended=False):
+        return self._listFiles(self.bucketName, prefix=prefix, delimiter=delimiter, extended=extended)
 
-    def _listFiles(self, bucketName, prefix=None, delimiter=None):
+    def _listFiles(self, bucketName, prefix=None, delimiter=None, extended=False):
         blobs = self.storageClient.list_blobs(bucketName, prefix=prefix, delimiter=delimiter)
+
+        if extended:
+            return [(blob.name, blob.size, self._convertB64Crc32c(blob.crc32c)) for blob in blobs]
         return [blob.name for blob in blobs]
 
     def _fileExists(self, bucketName, objectName):

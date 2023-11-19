@@ -238,9 +238,19 @@ class MediaCatalog(object):
         foundCloudFiles = []
         missingCloudFiles = []
         changedCloudFiles = []
+
+        import time
+        startTime = time.time()
+        if cloudStorage:
+            print(f'\nDownloading cloud object metadata... this takes a minute or two...')
+            blobData = cloudStorage.listFiles(extended=True)
+            print('--> Building cloud object dictionary...')
+            objectNames = [bd[0] for bd in blobData]
+            blobDict = dict(zip(objectNames, blobData))
+            print('')
         
         for i, record in enumerate(records, 1):
-            if i % 1 == 0:
+            if i % 1000 == 0:
                 print(f'Verifying file {i}/{numFiles}...')
             filePath = os.path.join(record['directory'], record['file_name'])
             if local:
@@ -256,20 +266,24 @@ class MediaCatalog(object):
                 else:
                     missingLocalFiles.append(record)
                     print(f'Local file not found: {filePath}')
+
             if cloudStorage:
-                try:
-                    cloudStorage.validateFile(record['cloud_object_name'], fileSize=record['file_size'], checksum=record['cloud_object_checksum'])
-                except CloudStorageObjectMissingException as e:
+                if record['cloud_object_name'] not in blobDict:
                     missingCloudFiles.append(record)
                     print(f'Cloud file not found: {record["cloud_object_name"]} ({filePath})')
-                except CloudStorageObjectSizeMismatchException as e:
-                    changedCloudFiles.append(record)
-                    print(f'[WARNING] Cloud file changed size: {record["cloud_object_name"]} ({filePath}) ({record["file_size"]} -> {e.actualSize})')
-                except CloudStorageObjectChecksumMismatchException as e:
-                    changedCloudFiles.append(record)
-                    print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({filePath}) ({record["cloud_object_checksum"]} -> {e.actualChecksum})')
+                    continue
                 else:
-                    foundCloudFiles.append(record)
+                    objectName, fileSize, cloudChecksum = blobDict[record['cloud_object_name']]
+                    if fileSize != record['file_size']:
+                        changedCloudFiles.append(record)
+                        print(f'[WARNING] Cloud file changed size: {record["cloud_object_name"]} ({record["file_size"]} -> {fileSize})')
+                        continue
+                    if cloudChecksum != record['cloud_object_checksum']:
+                        changedCloudFiles.append(record)
+                        print(f'[WARNING] Cloud file changed: {record["cloud_object_name"]} ({record["cloud_object_checksum"]} -> {cloudChecksum})')
+                        continue
+                foundCloudFiles.append(record)
+                print(f'Elapsed time: {time.time() - startTime:.3f} s')
 
         print('\nVerification complete!')
         print('======================')
