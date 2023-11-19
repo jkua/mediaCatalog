@@ -523,7 +523,9 @@ class CatalogDatabase(object):
 
         self.cursor.execute(command, values)
         records = self.cursor.fetchall()
-        return records[0][0]
+
+        fileSize = records[0][0] if records[0][0] is not None else 0
+        return fileSize
 
     def getFilesNotInCloud(self):
         self.cursor.execute(
