@@ -102,14 +102,18 @@ durations and retrieval fees.
     * `mcat query -c <catalog path> -s <checksum>`
 * Query catalog by directory (supports wildcards): 
     * `mcat query -c <catalog path> -d <directory>`
+* Verify files (local and/or cloud) against the catalog: 
+    * `mcat verify -c <catalog path> -p <specific path> [--local, --cloud, --all]`
 * Update paths after files are moved:
     * `mcat move -c <catalog path> <old directory> <new directory>`
 * Remove file from catalog (and cloud): 
     * `mcat remove -c <catalog path> -p <path to remove>`
 * Remove files in a directory (use a wildcard to remove subdirectories as well): 
     * `mcat remove -c <catalog path> -d <directory>`
-* Verify files (local and/or cloud) against the catalog: 
-    * `mcat verify -c <catalog path> -p <specific path> [--local, --cloud, --all]`
+* Display catalog stats:
+    * `mcat stats -c <catalog path>`
+* Export database to CSV at `<catalog path>/catalog.csv`:
+    * `mcat export -c <catalog path>`
 
 ### Cloud
 * Upload files to the cloud: 
