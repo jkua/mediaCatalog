@@ -575,8 +575,6 @@ class CatalogDatabase(object):
 
         command += commandTail
 
-        print(command)
-
         records = self.cursor.execute(command, values)
         if records:
             return [record['checksum'] for record in records]
