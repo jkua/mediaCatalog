@@ -21,6 +21,7 @@ setup(
         'scripts/mcat-move.py',
         'scripts/mcat-remove.py', 
         'scripts/mcat-stats.py',
+        'scripts/mcat-export.py',
         'scripts/mcat-cloudUpload.py', 
         'scripts/mcat-cloudDownload.py',
         'scripts/mcat-getMetadata.py'

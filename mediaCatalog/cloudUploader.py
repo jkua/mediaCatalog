@@ -1,6 +1,5 @@
 import logging
 import os
-import pathlib
 
 from .cloudStorage import CloudStorageObjectMissingException, CloudStorageObjectSizeMismatchException, CloudStorageObjectChecksumMismatchException
 
@@ -15,20 +14,7 @@ class CloudUploader(object):
 		filesToUpload = self.catalogDb.getFilesNotInCloud()
 
 		# Upload catalog database and config
-		print(f'\nUploading catalog database and config...')
-		catalogDbObject = os.path.join(*pathlib.Path(self.catalog.catalogDbPath).parts[-2:])
-		try:
-			self.cloudStorage.validateFile(catalogDbObject, sourcePath=self.catalog.catalogDbPath)
-			print(f'--> Catalog database in the cloud ({catalogDbObject}) matches local version ({self.catalog.catalogDbPath})')
-		except (CloudStorageObjectMissingException, 
-				CloudStorageObjectSizeMismatchException, 
-				CloudStorageObjectChecksumMismatchException) as e:
-			print(f'--> Uploading catalog DB to the cloud: {self.catalog.catalogDbPath} -> {catalogDbObject}')
-			self.cloudStorage.uploadFile(self.catalog.catalogDbPath, catalogDbObject, mimeType='application/vnd.sqlite3')
-	
-		configObject = os.path.join(*pathlib.Path(self.catalog.configPath).parts[-2:])
-		print(f'--> Uploading config to the cloud: {self.catalog.configPath} -> {configObject}')
-		self.cloudStorage.uploadFile(self.catalog.configPath, configObject, mimeType='application/yaml')
+		self.catalog.upload(self.cloudStorage)
 		
 		if not filesToUpload:
 			print(f'\nAll {totalFileCount} files have already been uploaded to the cloud.')

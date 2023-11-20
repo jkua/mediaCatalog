@@ -1,4 +1,5 @@
 import os
+import pathlib
 import logging
 import socket
 import yaml
@@ -15,6 +16,7 @@ from .utils import md5sum, sha256sum, getMimeTypes, getMetadata, getAcoustid
 class MediaCatalog(object):
     CONFIG_FILENAME = 'config.yaml'
     CATALOG_DB_FILENAME = 'catalog.db'
+    CATALOG_CSV_FILENAME = 'catalog.csv'
     METADATA_FOLDERNAME = 'metadata'
     HASH_TABLE_FILENAME = 'hashTable.jsonl'
     MEDIA_MIME_TYPES = ['image', 'video', 'audio', 'text']
@@ -30,6 +32,7 @@ class MediaCatalog(object):
         self.hashFilePath = os.path.join(self.catalogPath, self.HASH_TABLE_FILENAME)
         self.configPath = os.path.join(self.catalogPath, self.CONFIG_FILENAME)
         self.catalogDbPath = os.path.join(self.catalogPath, self.CATALOG_DB_FILENAME)
+        self.catalogCsvPath = os.path.join(self.catalogPath, self.CATALOG_CSV_FILENAME)
         self.metadataCatalogPath = os.path.join(self.catalogPath, self.METADATA_FOLDERNAME)
         self.hashDict = {}
         self.config = None
@@ -446,6 +449,41 @@ class MediaCatalog(object):
         print('------------------')
         for mimeType, fileCount, fileSize in results:
             print(f'{mimeType:21}: {fileCount:7d} ({fileSize/BYTES_PER_GB:.3f} GB)')      
+
+    def upload(self, cloudStorage):
+        print(f'\nUploading catalog database and config...')
+        catalogDbObject = os.path.join(*pathlib.Path(self.catalogDbPath).parts[-2:])
+        try:
+            cloudStorage.validateFile(catalogDbObject, sourcePath=self.catalogDbPath)
+            print(f'--> Catalog database in the cloud ({catalogDbObject}) matches local version ({self.catalogDbPath})')
+        except (CloudStorageObjectMissingException, 
+                CloudStorageObjectSizeMismatchException, 
+                CloudStorageObjectChecksumMismatchException) as e:
+            print(f'--> Uploading catalog DB to the cloud: {self.catalogDbPath} -> {catalogDbObject}')
+            cloudStorage.uploadFile(self.catalogDbPath, catalogDbObject, mimeType='application/vnd.sqlite3')
+
+        print('--> Exporting catalog database to CSV...')
+        catalogCsvObject = os.path.join(self.catalogPath, self.CATALOG_CSV_FILENAME)
+        self.catalogDb.export(self.catalogCsvPath)
+        try:
+            cloudStorage.validateFile(catalogCsvObject, sourcePath=self.catalogCsvPath)
+            print(f'--> Catalog CSV in the cloud ({catalogCsvObject}) matches local version ({self.catalogCsvPath})')
+        except (CloudStorageObjectMissingException, 
+                CloudStorageObjectSizeMismatchException, 
+                CloudStorageObjectChecksumMismatchException) as e:
+            print(f'--> Uploading catalog CSV to the cloud: {self.catalogCsvPath} -> {catalogCsvObject}')
+            cloudStorage.uploadFile(self.catalogCsvPath, catalogCsvObject, mimeType='text/csv')
+    
+        configObject = os.path.join(*pathlib.Path(self.configPath).parts[-2:])
+        try:
+            cloudStorage.validateFile(configObject, sourcePath=self.configPath)
+            print(f'--> Config file in the cloud ({configObject}) matches local version ({self.configPath})')
+        except (CloudStorageObjectMissingException, 
+                CloudStorageObjectSizeMismatchException, 
+                CloudStorageObjectChecksumMismatchException) as e:
+            print(f'--> Uploading config file to the cloud: {self.configPath} -> {configObject}')
+            cloudStorage.uploadFile(self.configPath, configObject, mimeType='application/yaml')
+
 
     @classmethod
     def _getMetadata(self, filenames: list) -> list:

@@ -2,6 +2,7 @@ import sqlite3
 from packaging.version import Version
 import logging
 import os
+import csv
 
 from .utils import getPreciseCaptureTimeFromExif
 
@@ -557,6 +558,18 @@ class CatalogDatabase(object):
         for key, value in zip(record.keys(), record):
             print(f'{key}: {value}')
 
+    def export(self, exportPath):
+        records = self.read(all=True)
+        if len(records) == 0:
+            print('No records to export!')
+            return
+
+        fieldNames = records[0].keys()
+        with open(exportPath, 'w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldNames)
+            writer.writeheader()
+            writer.writerows([dict(record) for record in records])
+        
     def _normalizeDirectory(self, directory):
         if directory is None:
             return None
