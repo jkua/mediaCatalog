@@ -29,16 +29,36 @@ makes them problematic for this tool to track.
 
 ## Installation 
 ### MacOS
-1. `brew install exiftool`
-2. `pip3 install .`
+1. Install [exiftool](https://exiftool.org/): `brew install exiftool`
+2. [Install gcloud CLI](https://cloud.google.com/sdk/docs/install) and login
+    1. `sudo snap install google-cloud-cli --classic`
+    2. `gcloud auth application-default login`
+3. Install MediaCatalog
+    1. `git clone https://github.com/jkua/mediaCatalog`
+    2. `cd mediaCatalog`
+    3. `pip3 install .`
 ### Debian/Ubuntu
-1. `sudo apt install libimage-exiftool-perl`
-
+1. Install [exiftool](https://exiftool.org/)
+    1. `wget https://exiftool.org/Image-ExifTool-12.70.tar.gz`
+    2. `tar xzvf Image-ExifTool-12.70.tar.gz`
+    3. `cd Image-ExifTool`
+    4. `make test`
+    5. `sudo make install`
+2. [Install gcloud CLI](https://cloud.google.com/sdk/docs/install) and login
+    1. `sudo snap install google-cloud-cli --classic`
+    2. `gcloud auth application-default login`
+3. Install MediaCatalog
+    1. `git clone https://github.com/jkua/mediaCatalog`
+    2. `cd mediaCatalog`
+    3. `pip3 install .`
 
 ### Developer Installation
-1. `brew install exiftool`
-2. `pip3 install -r requirements.txt`
-3. `pip3 install -e .`
+1. Install exiftool and the gcloud CLI as described above
+2. Install MediaCatalog in developer mode
+    1. `git clone https://github.com/jkua/mediaCatalog`
+    2. `cd mediaCatalog` 
+    3. `pip3 install -r requirements.txt`
+    4. `pip3 install -e .`
 
 ## Cloud setup
 Currently the tool only supports Google Cloud for file archival. Create a 
