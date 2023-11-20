@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mediaCatalog',
-    version='1.2.0',
+    version='1.3.0',
     packages=find_packages(),
     install_requires=[
         'pyyaml',
@@ -21,6 +21,7 @@ setup(
         'scripts/mcat-move.py',
         'scripts/mcat-remove.py', 
         'scripts/mcat-stats.py',
+        'scripts/mcat-duplicates.py',
         'scripts/mcat-export.py',
         'scripts/mcat-cloudUpload.py', 
         'scripts/mcat-cloudDownload.py',

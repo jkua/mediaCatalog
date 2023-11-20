@@ -552,6 +552,36 @@ class CatalogDatabase(object):
         records = self.cursor.fetchall()
         return records
 
+    def getDuplicates(self, directory=None):
+        ''' Find duplicate files in the database 
+
+            :param directory: (str) Directory to search for duplicates in
+            :returns list: List of checksums
+        '''
+        command = 'SELECT checksum, COUNT(*) c FROM file'
+        commandTail = ' GROUP BY checksum HAVING c > 1'
+        tokens = []
+        values = []
+        if directory is not None:
+            if '*' in directory or '?' in directory:
+                tokens.append('directory LIKE ?')
+                values.append(directory.replace('*', '%').replace('?', '_'))
+            else:
+                tokens.append('directory = ?')
+                values.append(directory)
+
+        if tokens:
+            command += ' WHERE ' + ' AND '.join(tokens)
+
+        command += commandTail
+
+        print(command)
+
+        records = self.cursor.execute(command, values)
+        if records:
+            return [record['checksum'] for record in records]
+        return records
+
     def printFileRecord(self, checksum):
         record = self.read(checksum)[0]
         print('')

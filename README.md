@@ -112,6 +112,8 @@ durations and retrieval fees.
     * `mcat remove -c <catalog path> -d <directory>`
 * Display catalog stats:
     * `mcat stats -c <catalog path>`
+* Display duplicate files:
+    * `mcat duplicates -c <catalog path>`
 * Export database to CSV at `<catalog path>/catalog.csv`:
     * `mcat export -c <catalog path>`
 
