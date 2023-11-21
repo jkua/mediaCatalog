@@ -91,6 +91,10 @@ durations and retrieval fees.
 2. `pytest tests`
 
 ## Operation
+### Help
+* Get list of commands: `mcat -h`
+* Get help for a command: `mcat <command> -h`
+
 ### Catalog
 * Create new catalog: 
     * `mcat catalog -c <catalog path> -n <path to process>`
