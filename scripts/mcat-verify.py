@@ -15,6 +15,7 @@ if __name__=='__main__':
 	parser.add_argument('--cloud', action='store_true', help='Verify files in the cloud')
 	parser.add_argument('--all', action='store_true', help='Verify files in all locations')
 	parser.add_argument('--verifyLocalChecksums', action='store_true', help='Verify checksums - this is very slow for local files!')
+	parser.add_argument('--clean', action='store_true', help='Remove database entries for files missing locally but are present elsewhere')
 	args = parser.parse_args()
 
 	logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s %(message)s')
@@ -32,7 +33,7 @@ if __name__=='__main__':
 		else:
 			cloudStorage = None
 
-		if catalog.verify(path=args.path, local=args.local, cloudStorage=cloudStorage, verifyChecksum=args.verifyLocalChecksums):
+		if catalog.verify(path=args.path, local=args.local, cloudStorage=cloudStorage, verifyChecksum=args.verifyLocalChecksums, clean=args.clean):
 			print('\nVerification successful!')
 		else:
 			print('\n*** Verification failed! ***')

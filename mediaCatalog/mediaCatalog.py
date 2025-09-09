@@ -212,13 +212,15 @@ class MediaCatalog(object):
                 path: Optional[str]=None, 
                 local: bool=False, 
                 cloudStorage: Optional[CloudStorage]=None, 
-                verifyChecksum: bool=False) -> bool:
+                verifyChecksum: bool=False,
+                clean: bool=False) -> bool:
         ''' Verify the catalog against the local files and in the cloud. If path is specified, only verify files in that path and subpaths.
         
             :param path: (str) Only verify files in this path and subpaths
             :param local: (bool) Verify local files
             :param cloudStorage: CloudStorage object to use for cloud verification
             :param verifyChecksum: (bool) Verify checksums of files
+            :param clean: (bool) If True, remove records from the catalog if the local file is missing and another record exists with a valid file
             :returns: (bool) True if all files are found and optionally matches checksums, False otherwise
         '''
         if path:
@@ -237,6 +239,8 @@ class MediaCatalog(object):
 
         foundLocalFiles = []
         missingLocalFiles = []
+        alternateLocalFiles = []
+        removedRecords = []
         changedLocalFiles = []
         foundCloudFiles = []
         missingCloudFiles = []
@@ -267,6 +271,30 @@ class MediaCatalog(object):
                 else:
                     missingLocalFiles.append(record)
                     print(f'Local file not found: {filePath}')
+                    otherRecords = self.catalogDb.read(record['checksum'])
+                    if len(otherRecords) == 1:
+                        print('--> ONLY RECORD OF THIS FILE!')
+                    else:
+                        print('--> Stored in other locations:')
+                        for otherRecord in otherRecords:
+                            otherPath = os.path.join(otherRecord['directory'], otherRecord['file_name'])
+                            if os.path.exists(otherPath):
+                                outString = f'    {otherPath} (FOUND)'
+                                if self._checksum(otherPath, self.CHECKSUM_MODE) == otherRecord['checksum']:
+                                    outString += '(VALID CHECKSUM)'
+                                    print(outString)
+
+                                    alternateLocalFiles.append(otherRecord)
+
+                                    if clean:
+                                        print('    --> Removing missing file record from catalog...')
+                                        self.metadataCatalog.delete(record['checksum'], record['file_name'], record['directory'], record['host_name'])
+                                        self.catalogDb.delete([record])
+                                        self.catalogDb.commit()
+                                        removedRecords.append(record)
+                                    break
+                            else:
+                                print(f'    {otherPath} (MISSING)')
 
             if cloudStorage:
                 if record['cloud_object_name'] not in blobDict:
@@ -292,7 +320,7 @@ class MediaCatalog(object):
         print(f'Files in catalog: {numFiles}')
         if local:
             print(f'\nLocal files found: {len(foundLocalFiles)}')
-            print(f'Local files missing: {len(missingLocalFiles)}')
+            print(f'Local files missing: {len(missingLocalFiles)} - alternate files: {len(alternateLocalFiles)} - removed records: {len(removedRecords)}')
             print(f'Local files changed: {len(changedLocalFiles)}')
         if cloudStorage:
             print(f'\nCloud files found: {len(foundCloudFiles)}')
