@@ -25,6 +25,7 @@ class CloudUploader(object):
 
 		uploadedFiles = []
 		skippedFiles = []
+		missingFiles = []
 		for i, (checksum, filename, directory, mimeType) in enumerate(filesToUpload, 1):
 			sourcePath = os.path.join(directory, filename)
 			objectName = os.path.join(self.catalog.config['cloudObjectPrefix'], checksum)
@@ -32,25 +33,29 @@ class CloudUploader(object):
 			uploadedPercentage = i/len(filesToUpload)*100
 			print(f'[{i}/{len(filesToUpload)} ({uploadedPercentage:.3f} %)] {sourcePath} -> {objectName}')
 
-			try:
-				self.cloudStorage.validateFile(objectName, sourcePath=sourcePath)
-			except CloudStorageObjectMissingException as e:
-				self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
-				uploadedFiles.append((sourcePath, objectName))
+			if os.path.exists(sourcePath):
+				try:
+					self.cloudStorage.validateFile(objectName, sourcePath=sourcePath)
+				except CloudStorageObjectMissingException as e:
+					self.cloudStorage.uploadFile(sourcePath, objectName, mimeType)
+					uploadedFiles.append((sourcePath, objectName))
+				else:
+					print('    WARNING: Object already exists in the cloud!')
+					print('    Checksums match. Skipping upload.')
+					skippedFiles.append((sourcePath, objectName))
+				
+				objectChecksum = self.cloudStorage.getChecksum(objectName)
+				self.catalogDb.setCloudStorage(checksum, 
+												self.cloudStorage.projectId, 
+												self.cloudStorage.bucketName, 
+												objectName, 
+												objectChecksum
+												)
+				self.catalogDb.commit()
+				# self.catalogDb.printFileRecord(checksum)
 			else:
-				print('    WARNING: Object already exists in the cloud!')
-				print('    Checksums match. Skipping upload.')
-				skippedFiles.append((sourcePath, objectName))
-			
-			objectChecksum = self.cloudStorage.getChecksum(objectName)
-			self.catalogDb.setCloudStorage(checksum, 
-											self.cloudStorage.projectId, 
-											self.cloudStorage.bucketName, 
-											objectName, 
-											objectChecksum
-											)
-			self.catalogDb.commit()
-			# self.catalogDb.printFileRecord(checksum)
+				missingFiles.append((sourcePath, objectName))
+
 
 		numProcessedFiles = len(uploadedFiles) + len(skippedFiles)
 		print(f'\nUpload complete!')
@@ -58,3 +63,11 @@ class CloudUploader(object):
 		print(f'Files processed: {numProcessedFiles}')
 		print(f'Uploaded files: {len(uploadedFiles)}')
 		print(f'Skipped files: {len(skippedFiles)}')
+		print(f'Missing files: {len(missingFiles)}')
+
+		if missingFiles:
+			print(f'\n{len(missingFiles)} files were missing and could not be uploaded:')
+			print('====================')
+			for i, (sourcePath, objectName) in enumerate(missingFiles, 1):
+				print(f'--> {i}) {sourcePath} -> {objectName}')
+			
